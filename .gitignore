@@ -1,0 +1,38 @@
+# Python 缓存
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 密钥与本地配置：Cookie / API key 只走环境变量，永远不要提交
+.env
+.env.*
+*.env
+secrets.json
+
+# Cookie 导出文件
+*cookies*.txt
+
+# 转录产物与下载的媒体（不要进仓库）
+*.srt
+*.vtt
+*.lrc
+*.ass
+*.json
+!package.json
+*.mp3
+*.m4a
+*.m4s
+*.wav
+*.aac
+*.flac
+*.opus
+*.mp4
+*.flv
+*.mkv
+*.webm
+
+# 系统垃圾
+.DS_Store
+Thumbs.db

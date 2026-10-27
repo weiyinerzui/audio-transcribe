@@ -1,0 +1,15 @@
+# 核心依赖
+requests>=2.28
+
+# 视频/音频链接下载（命令行工具，需在 PATH 中）
+#   pip install -U yt-dlp
+yt-dlp>=2024.1.0
+
+# B 站链接下载（走官方 API 取 DASH 音频流，免登录）
+#   只处理本地文件或非 B 站链接时可不装
+bilibili-api-python>=16.0.0
+
+# 注意：另需系统级 ffmpeg / ffprobe
+#   macOS:         brew install ffmpeg
+#   Debian/Ubuntu: sudo apt install ffmpeg
+#   Windows:       winget install Gyan.FFmpeg
