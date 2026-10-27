@@ -1,8 +1,10 @@
 # audio-transcribe
 
-> 一个 [pi](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) coding agent skill：把**本地音视频**或**网页链接**转成带时间戳的字幕（SRT）或干净文稿（TXT/JSON），并自动清理口误、语气词、重复卡顿和语音识别错字。
+> 通用 **Agent Skill**：把**本地音视频**或**网页链接**转成带时间戳的字幕（SRT）或干净文稿（TXT/JSON），并自动清理口误、语气词、重复卡顿和语音识别错字。
 
-**免费开箱即用**：默认走 B 站必剪（bcut）云转录接口，不需要任何 API key，不带时间戳的地狱级本地 ASR 模型一个都不跑。
+遵循 [Agent Skills](https://agentskills.io) 开放标准，**Claude Code / Codex / OpenCode / pi** 等任意支持 skills 的 agent 都能直接用；不依赖 agent 也能当普通 Python 脚本跑。
+
+**免费开箱即用**：默认走 B 站必剪（bcut）云转录接口，不需要任何 API key，本地 ASR 模型一个都不跑。
 
 ```
 本地文件 / 网页链接
@@ -30,39 +32,134 @@
 | **默认清理文稿** | 自动删「嗯/啊/那个/就是」、折叠「今天今天→今天」、修同音错字，**SRT 时间轴原样保留** |
 | **清理不联网也行** | `--clean rules` 纯本地正则，不调用任何 LLM；LLM 网关挂了也自动降级，不会让整次转录失败 |
 | **不跑本地模型** | 转录全部走云端免费接口，无 GPU 的笔记本、NAS、树莓派都能处理长音频 |
+| **跨 agent 通用** | 标准 SKILL.md frontmatter，装到各家 skills 目录即可识别，无需改代码 |
 | **可脚本串联** | `stdout` 只输出最终文件路径，进度与警告走 `stderr`，方便塞进 pipeline |
 
 ## 环境要求
+
+所有 agent 通用，先装好这些：
 
 - Python **3.10+**
 - 系统命令行工具：`ffmpeg`、`ffprobe`（必需）、`yt-dlp`（下链接时需要）
 - Python 包：`requests`；B 站链接另需 `bilibili-api-python`
 
-## 安装
-
 ```bash
-# 1. 克隆到 pi 的 skills 目录（装给它用）
-git clone https://github.com/weiyinerzui/audio-transcribe ~/.pi/agent/skills/audio-transcribe
-
-# 2. 安装 Python 依赖
-pip install -r ~/.pi/agent/skills/audio-transcribe/requirements.txt
-
-# 3. 安装系统命令行工具（按平台选一）
-#    macOS:          brew install ffmpeg && pip install -U yt-dlp
-#    Debian/Ubuntu:  sudo apt install ffmpeg && pip install -U yt-dlp
-#    Arch:           sudo pacman -S ffmpeg && pip install -U yt-dlp
-#    Windows:        winget install Gyan.FFmpeg && pip install -U yt-dlp
+# 系统工具（按平台选一）
+#   macOS:          brew install ffmpeg && pip install -U yt-dlp
+#   Debian/Ubuntu:  sudo apt install ffmpeg && pip install -U yt-dlp
+#   Arch:           sudo pacman -S ffmpeg && pip install -U yt-dlp
+#   Windows:        winget install Gyan.FFmpeg && pip install -U yt-dlp
 ```
 
-**不给 pi 用也行**：这个目录就是一套普通 Python 脚本，clone 到任意位置，直接 `python3 transcribe.py ...` 即可。
+## 安装到各家 agent
 
-装好后重启 pi（或开新会话），skill 自动生效。
+skill 本质是一个含 `SKILL.md` 的目录，**不同 agent 只是「放在哪」不一样**。下面任选其一，
+装好后重启 agent（或开新会话）即自动生效。
+
+### Claude Code
+
+个人级（所有项目可用）：
+
+```bash
+mkdir -p ~/.claude/skills
+git clone https://github.com/weiyinerzui/audio-transcribe ~/.claude/skills/audio-transcribe
+pip install -r ~/.claude/skills/audio-transcribe/requirements.txt
+```
+
+项目级（跟着仓库走，团队共享）：
+
+```bash
+mkdir -p .claude/skills
+git clone https://github.com/weiyinerzui/audio-transcribe .claude/skills/audio-transcribe
+pip install -r .claude/skills/audio-transcribe/requirements.txt
+```
+
+用法：直接把文件或链接丢给 Claude ——「把 `会议.mp4` 转成字幕」「转录这个 B 站视频：https://...」；
+也可以显式 `/audio-transcribe <文件或链接>`。
+
+> Claude Code 会把目录名作为命令名，所以**目录名必须叫 `audio-transcribe`**，别改成别的。
+
+### Codex
+
+```bash
+# 个人级（Codex 读取 ~/.agents/skills 与 $CODEX_HOME/skills，默认 CODEX_HOME=~/.codex）
+mkdir -p ~/.agents/skills
+git clone https://github.com/weiyinerzui/audio-transcribe ~/.agents/skills/audio-transcribe
+pip install -r ~/.agents/skills/audio-transcribe/requirements.txt
+```
+
+想装到 Codex 自己的 skills 目录也等价：
+
+```bash
+mkdir -p ~/.codex/skills
+git clone https://github.com/weiyinerzui/audio-transcribe ~/.codex/skills/audio-transcribe
+```
+
+用法：`codex` 里直接说「用 audio-transcribe 转录 会议.mp4」，或让它 `$audio-transcribe`。
+
+### OpenCode
+
+个人级：
+
+```bash
+mkdir -p ~/.config/opencode/skills
+git clone https://github.com/weiyinerzui/audio-transcribe ~/.config/opencode/skills/audio-transcribe
+pip install -r ~/.config/opencode/skills/audio-transcribe/requirements.txt
+```
+
+项目级：
+
+```bash
+mkdir -p .opencode/skills
+git clone https://github.com/weiyinerzui/audio-transcribe .opencode/skills/audio-transcribe
+```
+
+> OpenCode 也会读 Claude 兼容路径（`~/.claude/skills/`、`.claude/skills/`）和通用路径
+> （`~/.agents/skills/`、`.agents/skills/`）。已经给 Claude Code 装过的话，OpenCode **可以直接复用，不用装第二份**。
+
+### pi
+
+```bash
+git clone https://github.com/weiyinerzui/audio-transcribe ~/.pi/agent/skills/audio-transcribe
+pip install -r ~/.pi/agent/skills/audio-transcribe/requirements.txt
+```
+
+### 其它 agent / 不对接 agent
+
+只要它支持 Agent Skills 标准，把仓库 clone 到它的 `skills/` 目录即可。若路径不标准，直接软链过去：
+
+```bash
+ln -s /path/to/audio-transcribe ~/.your-agent/skills/audio-transcribe
+```
+
+**完全不接 agent 也完全可用** —— 这本来就是一套普通 Python 脚本：
+
+```bash
+git clone https://github.com/weiyinerzui/audio-transcribe && cd audio-transcribe
+pip install -r requirements.txt
+python3 transcribe.py 视频.mp4 --engine bcut -o 字幕.srt
+```
+
+### 一次装好，多 agent 共用
+
+不想在多处重复 clone？装一份，其余软链过去：
+
+```bash
+git clone https://github.com/weiyinerzui/audio-transcribe ~/skills/audio-transcribe
+pip install -r ~/skills/audio-transcribe/requirements.txt
+
+mkdir -p ~/.claude/skills ~/.agents/skills ~/.config/opencode/skills ~/.pi/agent/skills
+ln -s ~/skills/audio-transcribe ~/.claude/skills/audio-transcribe
+ln -s ~/skills/audio-transcribe ~/.agents/skills/audio-transcribe          # Codex / OpenCode 通用路径
+ln -s ~/skills/audio-transcribe ~/.config/opencode/skills/audio-transcribe
+ln -s ~/skills/audio-transcribe ~/.pi/agent/skills/audio-transcribe
+```
 
 ## 快速上手
 
-```bash
-cd ~/.pi/agent/skills/audio-transcribe
+不论用哪个 agent，底层都是同一个命令：
 
+```bash
 # 最常用：视频 → 带时间戳的中文字幕（免费，无需 key）
 python3 transcribe.py 视频.mp4 --engine bcut -o 字幕.srt
 
@@ -164,6 +261,9 @@ export NINEROUTER_API_KEY="sk-xxxxxxxx"
 
 > 变量名沿用 `NINEROUTER_*` 是历史原因，语义就是「清理用的 LLM 网关」，与具体服务商无关。
 
+**给 agent 用时**：环境变量要在 agent 进程的环境里生效（写进 shell 的 `~/.bashrc` / `~/.zshrc`，
+或写进 agent 自己的配置/env 文件）。否则 agent 调用脚本时读不到，会退化成 `rules` 清理 —— 功能正常，只是没 LLM 润色。
+
 ## 输出格式
 
 | 扩展名 | 内容 |
@@ -182,13 +282,15 @@ python3 transcribe.py 视频.mp4 --engine bcut -o 字幕.srt 2>/dev/null   # 只
 
 ```
 audio-transcribe/
-├── SKILL.md              # pi 的行为说明书：路由表、各步骤规则、踩坑记录
+├── SKILL.md              # agent 行为说明书：路由表、各步骤规则、踩坑记录
+├── README.md
+├── LICENSE               # MIT
+├── requirements.txt
 ├── transcribe.py         # 统一 CLI 入口（参数解析、流程编排、输出兜底）
 ├── audio.py              # ffmpeg 抽音轨 / 转码成 16k 单声道
 ├── downloader.py         # 多平台链接 → 本地音频（B站 API + yt-dlp 分层）
 ├── cleaner.py            # 文稿清理（LLM 逐段编号 / 本地正则 / 跳过）
 ├── subtitle.py           # Segment / Transcript 数据模型与 SRT/JSON/TXT 导出
-├── requirements.txt
 └── engines/
     ├── base.py           # 引擎接口约定
     ├── bcut.py           # B 站必剪免费接口（移植 VideoCaptioner 的 BcutASR）
@@ -200,6 +302,12 @@ audio-transcribe/
 
 ## 常见问题
 
+**Q：agent 说找不到 / 不触发这个 skill？**
+先确认目录名是 `audio-transcribe`（Claude Code 用它当命令名），再确认 `SKILL.md` 在目录**里面**而不是变成了 `SKILL.md.txt`。然后重启会话 —— skill 是启动时扫描的。
+
+**Q：agent 里能转录，但清理没生效？**
+agent 进程多半读不到你 shell 里 `export` 的 `NINEROUTER_*` 变量，于是降级成 `rules`。写进 shell 启动文件后重开会话，或改用 `--clean-base-url` / `--clean-model` 参数显式传。
+
 **Q：bcut 提示额度触顶？**
 B 站对免费接口有滑动窗口限流，等一会儿重置即可；或换 `--engine jianying`；或改用 `siliconflow`（要 key）。
 
@@ -209,14 +317,14 @@ B 站对免费接口有滑动窗口限流，等一会儿重置即可；或换 `-
 **Q：转录里有错别字？**
 同音字/专有名词是 ASR 通病。开 `--clean llm` 能修掉大部分；专有名词密集的内容建议转录后人工过一遍，或用 `--clean-model` 换更强的模型。
 
-**Q：SRT 能出，但我想同时要文稿？**
-跑两次，或先出 `.json`（既有 `text` 又有 `segments`），再自己转成任意格式。
-
-**Q：`--clean llm` 报「未配置清理网关」？**
-正常降级提示。要么按上文配三个环境变量，要么显式用 `--clean rules` 走本地正则。
+**Q：想同时要 SRT 和文稿？**
+先出 `.json`（既有 `text` 又有 `segments`），再自己转任意格式；或者直接跑两次。
 
 **Q：小红书/抖音下不动？**
 这两个站强依赖登录 Cookie，且会过期。重新从浏览器复制一次完整 Cookie；小红书还要确认笔记里确实含视频。
+
+**Q：Windows 能用吗？**
+能。装好 `ffmpeg` 与 Python 依赖后 `python transcribe.py ...`；路径有空格记得加引号。Cookie/环境变量用 `set X=...`（cmd）或 `$env:X="..."`（PowerShell）。
 
 **Q：yt-dlp 报签名错误？**
 先 `pip install -U yt-dlp`。各平台签名算法会持续更新，升级通常能解决。

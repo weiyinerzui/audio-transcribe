@@ -59,7 +59,11 @@ FULLTEXT_PROMPT = (
 _PROVIDER_NAME = os.environ.get("NINEROUTER_PROVIDER", "9router")
 
 def _provider_config() -> dict:
-    """读取 pi 的 models.json 里注册的 provider 配置（可选，仅 pi 用户存在）。"""
+    """从 agent 配置文件读网关信息（可选，仅 pi 用户存在）。
+
+    非 pi 环境下文件不存在，直接返回空，不影响其他 agent 使用；
+    优先走 NINEROUTER_BASE_URL / NINEROUTER_MODEL / NINEROUTER_API_KEY 环境变量。
+    """
     try:
         cfg = json.load(open(os.path.expanduser("~/.pi/agent/models.json"), encoding="utf-8"))
     except (OSError, ValueError):

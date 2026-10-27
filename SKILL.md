@@ -1,7 +1,13 @@
 ---
 name: audio-transcribe
-description: 音频/视频转录为字幕或纯文稿，并自动清理口误、语气词、重复和语音识别错误。集成免费接口 bcut（必剪）、jianying（剪映）和硅基流动 Qwen3-ASR，支持接入任意 OpenAI 兼容网关做 LLM 文稿清理，未配置时自动降级为本地正则清理。Use when the user wants to transcribe audio/video into subtitles (SRT), get a cleaned transcript (TXT/JSON), extract speech from a recording, or remove filler words and ASR errors from a transcription. Supports Chinese and English.
-allowed-tools: Bash(python3 *transcribe.py *)
+description: 音频/视频转录为字幕或纯文稿，并自动清理口误、语气词、重复和语音识别错误。集成免费接口 bcut（必剪）、jianying（剪映）和硅基流动 Qwen3-ASR，支持接入任意 OpenAI 兼容网关做 LLM 文稿清理，未配置时自动降级为本地正则清理。支持本地文件与 B站/微博/YouTube/抖音/小红书/快手 链接。Use when the user wants to transcribe audio/video into subtitles (SRT), get a cleaned transcript (TXT/JSON), extract speech from a recording, or remove filler words and ASR errors from a transcription. Supports Chinese and English.
+license: MIT
+compatibility: 需要 python3 (3.10+)、ffmpeg/ffprobe，链接输入另需 yt-dlp；适用于 Claude Code / Codex / OpenCode / pi 等支持 Agent Skills 的 agent，也可直接当 Python 脚本运行。
+metadata:
+  version: "1.0.0"
+  language: zh-CN
+  category: media
+  repository: https://github.com/weiyinerzui/audio-transcribe
 ---
 
 # 音频转录（audio-transcribe）
@@ -50,7 +56,17 @@ python3 <skill-dir>/transcribe.py "https://www.xiaohongshu.com/explore/xxxx" --e
 python3 <skill-dir>/transcribe.py <输入文件> --engine bcut -o 输出.srt
 ```
 
+`<skill-dir>` 是本 `SKILL.md` 所在目录。不同 agent 的安装位置不同（Claude Code `~/.claude/skills/audio-transcribe`、
+Codex `~/.agents/skills/audio-transcribe`、OpenCode `~/.config/opencode/skills/audio-transcribe`、
+pi `~/.pi/agent/skills/audio-transcribe`），请先定位到实际路径再用绝对路径调用，不要假设 cwd。
+
 **首次使用前**先跑 `--help` 确认参数。依赖：`requests` + 系统 `ffmpeg`/`ffprobe` + `yt-dlp`；B站链接另需 `bilibili-api-python`。
+
+依赖缺失时按提示补装：
+
+```bash
+pip install -r <skill-dir>/requirements.txt
+```
 
 ## 转录引擎
 
@@ -152,6 +168,10 @@ export NINEROUTER_API_KEY="sk-..."
 ```
 
 不想联网就用 `--clean rules`，完全不调任何 LLM。
+
+**agent 环境提醒**：环境变量必须在你启动 agent 的那个 shell/进程里生效（写进 `~/.bashrc`、
+`~/.zshrc` 或 agent 自己的 env 配置）。仅在子 shell 里 export 后另开 agent 会读不到，
+此时会自动降级为 `rules` 清理（功能正常，只是没 LLM 润色）。
 
 ## 已知限制
 
