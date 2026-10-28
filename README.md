@@ -155,6 +155,51 @@ ln -s ~/skills/audio-transcribe ~/.config/opencode/skills/audio-transcribe
 ln -s ~/skills/audio-transcribe ~/.pi/agent/skills/audio-transcribe
 ```
 
+### 让 agent 自己装（复制这段 Prompt）
+
+不想手敲命令？把下面整段复制给你的 agent（Claude Code / Codex / OpenCode / pi 都行），它会自己定位路径、装依赖、做验证。
+
+```text
+请帮我安装并配置 audio-transcribe skill，这是一个把音频/视频转成字幕或文稿的 Agent Skill。
+
+仓库：https://github.com/weiyinerzui/audio-transcribe
+
+请按以下步骤执行，每步完成后告诉我结果：
+
+1. 判断我当前用的 agent 类型，确定 skill 安装目录：
+   - Claude Code：~/.claude/skills/audio-transcribe
+   - Codex：${CODEX_HOME:-~/.codex}/skills/audio-transcribe（也支持 ~/.agents/skills/）
+   - OpenCode：~/.config/opencode/skills/audio-transcribe
+   - pi：~/.pi/agent/skills/audio-transcribe
+   如果目录下已有同名 skill，先告诉我有旧版本，问我是否覆盖，不要直接覆盖。
+
+2. 克隆仓库到该目录（不要克隆到临时目录再复制）：
+   git clone https://github.com/weiyinerzui/audio-transcribe <上述目录>
+
+3. 检查并安装依赖：
+   - 确认 python3 版本 >= 3.10
+   - 确认 ffmpeg 和 ffprobe 在 PATH 中（缺失时告诉我对应平台的安装命令，不要擅自 sudo）
+   - 确认 yt-dlp 可用
+   - 执行 pip install -r <目录>/requirements.txt
+
+4. 验证安装（必须真的跑一遍，不要只看文件是否存在）：
+   python3 <目录>/transcribe.py --help
+   然后把执行结果摘要给我。
+
+5. 询问我要不要配置 LLM 清理网关（可选，不配也能用，会自动降级为本地正则清理）：
+   需要配置的话，我提供 base_url / model / api_key 后，帮我写进 shell 启动文件
+   （~/.bashrc 或 ~/.zshrc），变量名为：
+     NINEROUTER_BASE_URL / NINEROUTER_MODEL / NINEROUTER_API_KEY
+
+注意事项：
+- 安装完成后告诉我这个 skill 的绝对路径，以及怎么用它。
+- 不要删除我的原始音视频文件。
+- 不要把 api_key 或 Cookie 写进任何会提交到 git 的文件，也不要在回复里完整打印出来。
+- 如果某一步失败，告诉我具体错误和修复建议，不要静默跳过。
+```
+
+装好后直接说「把这个视频转成字幕：<链接>」即可，agent 会自动调用。
+
 ## 快速上手
 
 不论用哪个 agent，底层都是同一个命令：
@@ -304,7 +349,7 @@ python3 transcribe.py 视频.mp4 --engine bcut -o 字幕.srt 2>/dev/null   # 只
 
 ```
 audio-transcribe/
-├── SKILL.md              # agent 行为说明书：路由表、各步骤规则、踩坑记录
+├── SKILL.md              # agent 入口：核心用法、引擎选择、关键约束、路由表
 ├── README.md
 ├── LICENSE               # MIT
 ├── requirements.txt
@@ -313,12 +358,19 @@ audio-transcribe/
 ├── downloader.py         # 多平台链接 → 本地音频（B站 API + yt-dlp 分层）
 ├── cleaner.py            # 文稿清理（LLM 逐段编号 / 本地正则 / 跳过）
 ├── subtitle.py           # Segment / Transcript 数据模型与 SRT/JSON/TXT 导出
+├── references/           # 详细文档，agent 按需加载（不进主上下文）
+│   ├── platforms.md      # 平台支持矩阵、Cookie 配置、分P
+│   ├── cleaning.md       # 三种清理模式、网关配置、长音频稳定性
+│   └── troubleshooting.md# 报错排查、失败降级路径、依赖安装
 └── engines/
     ├── base.py           # 引擎接口约定
     ├── bcut.py           # B 站必剪免费接口（移植 VideoCaptioner 的 BcutASR）
     ├── jianying.py       # 剪映接口（依赖第三方签名服务）
     └── siliconflow.py    # 硅基流动 Qwen3-ASR
 ```
+
+`SKILL.md` 只保留 agent 必须常读的内容（约 3 KB），平台、清理、排错等细节放在 `references/`，
+agent 遇到具体场景才会去读 —— 减少常驻上下文占用，也避免无关细节干扰判断。
 
 想加新引擎？实现一个 `BaseEngine` 子类，提供 `transcribe(audio_path) -> Transcript`，在 `engines/__init__.py` 的 `ENGINES` 注册表里登记一行即可。
 

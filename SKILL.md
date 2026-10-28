@@ -4,7 +4,7 @@ description: 音频/视频转录为字幕或纯文稿，并自动清理口误、
 license: MIT
 compatibility: 需要 python3 (3.10+)、ffmpeg/ffprobe，链接输入另需 yt-dlp；适用于 Claude Code / Codex / OpenCode / pi 等支持 Agent Skills 的 agent，也可直接当 Python 脚本运行。
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   language: zh-CN
   category: media
   repository: https://github.com/weiyinerzui/audio-transcribe
@@ -12,182 +12,87 @@ metadata:
 
 # 音频转录（audio-transcribe）
 
-把音频或视频转成字幕（SRT）或纯文稿（TXT/JSON），并清理口误、语气词、重复和语音识别错误。
+把**本地音视频**或**网页链接**转成字幕（SRT）或纯文稿（TXT/JSON），并清理口误、语气词、
+重复卡顿和语音识别错字。转录协议移植自 [VideoCaptioner](https://github.com/WEIFENG2333/VideoCaptioner)。
 
-转录协议移植自 [VideoCaptioner](https://github.com/WEIFENG2333/VideoCaptioner)。
+## 核心用法
 
-## 输入
-
-可以直接喂**本地音视频文件**，也可以喂**网页链接**，从链接直接产出文字稿。
-
-| 平台 | 免登录 | 输出 | 说明 |
-|------|--------|------|------|
-| B站 bilibili.com / b23.tv | ✅ | srt/json/txt | 走 bilibili-api 取 DASH 音频流，支持分P |
-| 微博 weibo.com | ✅ 通常 | srt/json/txt | 走 yt-dlp |
-| YouTube 等 | ✅ 视连通性 | srt/json/txt | 走 yt-dlp |
-| 抖音 douyin.com / v.douyin.com | ⚠️ 建议 Cookie | srt/json/txt | 需 `DOUYIN_COOKIE`（yt-dlp 报 "Fresh cookies are needed"） |
-| 小红书 xiaohongshu.com / xhslink.com | ❌ 需 Cookie | srt/json/txt | 需 `XHS_COOKIE`，且仅笔记含视频时可下载 |
-| 快手 kuaishou.com / v.kuaishou.com | ❌ 需 Cookie | srt/json/txt | 需 `KUAISHOU_COOKIE` |
-| 微信视频号 | ❌ 不支持 | — | yt-dlp 无该平台支持，需抓包工具取得直链 |
+只有一条命令。`<skill-dir>` 是本文件所在目录，**必须用绝对路径**（脚本自己处理 import，可在任意 cwd 运行）：
 
 ```bash
-# B站：开箱即用
-python3 <skill-dir>/transcribe.py "https://www.bilibili.com/video/BV1xx411c7XX" --engine bcut -o 文稿.txt
-
-# B站分P
-python3 <skill-dir>/transcribe.py "https://www.bilibili.com/video/BV1xx411c7XX?p=3" -o p3.srt --engine bcut
-
-# 抖音 / 小红书 / 快手：先在浏览器登录，复制完整 Cookie 到环境变量
-export XHS_COOKIE="a1=...; web_session=..."
-export DOUYIN_COOKIE="ttwid=...; odin_tt=..."
-export KUAISHOU_COOKIE="kuaishou.la_gk=..."
-python3 <skill-dir>/transcribe.py "https://www.xiaohongshu.com/explore/xxxx" --engine bcut -o 笔记.txt
+python3 <skill-dir>/transcribe.py <输入文件或链接> --engine bcut -o 输出.srt
 ```
 
-链接输入时若不指定 `-o`，自动命名为 `<平台>_<时间戳>.srt`。
+常用变体：
 
-**Cookie 只通过环境变量传入，不写入文件、不打印到日志、不随结论输出。** Cookie 等同于登录态，请勿提交到 git 仓库。
+| 目的 | 命令 |
+|---|---|
+| 带时间戳字幕（最常用） | `--engine bcut -o 字幕.srt` |
+| 纯文稿 | `--engine bcut --format txt -o 文稿.txt` |
+| 完全离线，不调任何 LLM | `--clean rules` |
+| 要原始识别结果 | `--clean none` |
 
-## 运行方式
+三个清理模式的取舍见 [references/cleaning.md](references/cleaning.md)。
 
-始终用 `python3` 加本 skill 目录下的绝对路径调用（脚本自身处理 import，可在任意 cwd 运行）：
+**默认 `--clean llm`**：调用任意 OpenAI 兼容网关润色。未配置网关时自动降级为本地正则清理，
+不会把文稿发往第三方。详见 [references/cleaning.md](references/cleaning.md)。
 
-```bash
-python3 <skill-dir>/transcribe.py <输入文件> --engine bcut -o 输出.srt
-```
+首次使用先跑 `python3 <skill-dir>/transcribe.py --help` 确认参数。
+依赖缺失时 `pip install -r <skill-dir>/requirements.txt`。
 
-`<skill-dir>` 是本 `SKILL.md` 所在目录。不同 agent 的安装位置不同（Claude Code `~/.claude/skills/audio-transcribe`、
-Codex `~/.agents/skills/audio-transcribe`、OpenCode `~/.config/opencode/skills/audio-transcribe`、
-pi `~/.pi/agent/skills/audio-transcribe`），请先定位到实际路径再用绝对路径调用，不要假设 cwd。
+## 引擎选择
 
-**首次使用前**先跑 `--help` 确认参数。依赖：`requests` + 系统 `ffmpeg`/`ffprobe` + `yt-dlp`；B站链接另需 `bilibili-api-python`。
+| 引擎 | 鉴权 | 时间戳 | 何时用 |
+|---|---|---|---|
+| `bcut` | 无需 key | ✅ | **默认首选**，免费稳定，走 B 站必剪接口 |
+| `jianying` | 无需 key | ✅ | bcut 失败时备选；依赖第三方签名服务，**可能随时失效** |
+| `siliconflow` | `SILICONFLOW_API_KEY` | ❌ | 只要纯文稿、不要时间轴时 |
 
-依赖缺失时按提示补装：
+需要 SRT 就必须用带时间戳的引擎。`siliconflow` 请求 SRT 会被自动降级为 txt 并提示。
 
-```bash
-pip install -r <skill-dir>/requirements.txt
-```
+## 输出
 
-## 转录引擎
-
-| 引擎 | 鉴权 | 时间戳 | 可输出 | 说明 |
-|------|------|--------|--------|------|
-| `bcut` | 无需 key（免费） | ✅ | srt/json/txt | B 站必剪接口，**默认首选** |
-| `jianying` | 无需 key（免费） | ✅ | srt/json/txt | 剪映接口，**尽力而为**：依赖第三方签名服务 `asrtools-update.bkfeng.top`，可能随时失效 |
-| `siliconflow` | `SILICONFLOW_API_KEY` | ❌ | txt/json | `Qwen/Qwen3-ASR-1.7B`，只返回整段文稿，接口不提供时间戳 |
-
-`bcut` 免费且稳定、带时间戳，是默认推荐。请求时加 `SILICONFLOW_API_KEY` 才能用 `siliconflow`。
-
-## 文稿清理（默认开启，`--clean llm`）
-
-转录结果不会原样输出，默认经任意 OpenAI 兼容网关的 LLM 清理：
-删除语气词（嗯/啊/那个/就是/对吧…）、重复卡顿（今天今天→今天）、明显识别错别字。
-
-清理网关需自行配置（`NINEROUTER_BASE_URL` / `NINEROUTER_MODEL` / `NINEROUTER_API_KEY`），
-可用 OpenAI、DeepSeek、本地 Ollama 等任意兼容端点。**未配置时自动降级为 `--clean rules`**，
-不会把文稿发往任何第三方主机。
-
-- **有时间戳**（bcut/jianying）：分批编号逐行清理，**完整保留 SRT 时间轴**，纯语气词行被丢弃后序号自动重排
-- **无时间戳**（siliconflow）：按段落分块整篇润色
-- `--clean rules`：本地正则清理，免费不联网，同样保留时间轴
-- `--clean none`：不清理，输出原始识别结果
-- 清理网关不可达或未配置时**自动降级为 rules**并打印警告，不会让整次转录失败
-
-长音频的稳定性（实测 1 小时 / 2.9 万字无降级）：
-
-- **流式请求**：超时判定的是「相邻数据块间隔」（默认 120s），不是整段生成总时长
-- **小分块**：默认 1200 字/块，在段落/句子边界切；`NINEROUTER_CLEAN_CHUNK` 可调
-- **分块级容错**：单块失败只保留该块原文，其他块照常；全部失败才降级 `rules`
-- **预算递增**：输出为空或被截断时自动加大 `max_tokens` 重试
-
-## 常用命令
-
-```bash
-# 免费转录 + 清理 + 保留时间轴字幕（最常用）
-python3 <skill-dir>/transcribe.py 视频.mp4 --engine bcut -o 字幕.srt
-
-# 完全离线清理（不调用任何 LLM）
-python3 <skill-dir>/transcribe.py 音频.mp3 --engine bcut --clean rules -o 字幕.srt
-
-# 剪映（尽力而为，接口可能失效）
-python3 <skill-dir>/transcribe.py 音频.mp3 --engine jianying -o 字幕.srt
-
-# 换成文稿形态
-python3 <skill-dir>/transcribe.py 音频.mp3 --engine bcut --format txt -o 文稿.txt
-
-# 硅基流动（纯文稿，无时间戳）
-export SILICONFLOW_API_KEY="sk-..."
-python3 <skill-dir>/transcribe.py 音频.mp3 --engine siliconflow -o 文稿.txt
-```
-
-## 输出格式
+格式由 `-o` 的扩展名决定（`.srt` / `.json` / `.txt`），也可用 `--format` 显式指定。
 
 - `.srt` — 字幕，需要引擎提供时间戳
 - `.json` — `{source, has_timing, text, segments[{text,start_ms,end_ms}]}`
 - `.txt` — 纯文稿
 
-格式由 `-o` 的扩展名决定，也可用 `--format` 显式指定。请求无时间戳组合时自动降级为 `txt` 并提示。
-`stdout` 只输出最终文件路径（进度与警告走 stderr），便于脚本串联。
+请求无时间戳组合（如 `siliconflow` + `.srt`）时会自动降级为 `txt` 并提示。
 
-## 交付（可选，按需）
+**`stdout` 只输出最终文件路径**，进度与警告全部走 stderr —— 便于脚本串联，你可以直接读取
+stdout 拿到产物路径。
 
-转录完成后默认只做一件事：**把输出文件路径打到 `stdout`**，不主动发送、不上传、归档到任何外部服务。
+## 关键约束
 
-如果需要把结果推给用户（例如在 chat bot / agent 里运行），按你自己的通道实现即可，常见两种：
+这几条必须遵守，否则会出错或造成损失：
 
-1. **直接返回文件**：调用方读取 `stdout` 的路径，再走自身的文件发送能力（飞书、Slack、Telegram 等）。
-2. **写进知识库/文档**：把 `.srt` / `.txt` 内容写入你的笔记系统，正文长时用文档链接代替聊天消息。
+1. **不要删除用户的原始输入文件。** 脚本只清理自己产生的中间产物，用户给的音视频文件永远保留。
+2. **Cookie 与密钥只走环境变量。** 不写入文件、不打印到日志、不写进回复正文。
+   Cookie 等同于登录态，绝不能提交进 git 或展示给他人。
+3. **不要假设 cwd。** 必须用 `<skill-dir>` 下的绝对路径调用 `transcribe.py`。
+4. **不要因为清理失败就判定转录失败。** `--clean llm` 失败会自动降级 `rules`，
+   产物依然有效；只有转录本身失败才算失败。
+5. **长时间任务要如实告知。** 1 小时音频全程（下载+转录+清理）约需 30–45 分钟，
+   不要中途误判为卡死。
 
-### 临时文件清理
+## 按需查阅
 
-`transcribe.py` 自己会清干净中间产物，调用方只需注意：
+以下内容不在主文件里展开，遇到对应场景再读：
 
-| 文件 | 谁清理 |
+| 场景 | 文件 |
 |---|---|
-| 链接下载的原始音视频（`audiotr_dl_*` 临时目录） | 脚本在 `finally` 里删除 |
-| 转码出的 16k 单声道 mp3 | 脚本在 `finally` 里删除（用户原始输入**绝不删除**） |
-| 你指定的 `-o` 输出文件 | 保留，这是产物 |
+| 平台链接支持、Cookie 配置、分P、视频号等 | [references/platforms.md](references/platforms.md) |
+| 清理模式细节、LLM 网关配置、长音频稳定性 | [references/cleaning.md](references/cleaning.md) |
+| 报错排查、已知限制、失败降级路径 | [references/troubleshooting.md](references/troubleshooting.md) |
 
-skill 目录下的代码与配置永远不要删。
+## 结果交付
 
-## 环境变量
+转录完成后本 skill 只做一件事：**把输出文件路径打到 stdout**。不主动发送、不上传、
+不归档到任何外部服务。
 
-| 变量 | 用途 | 必需性 |
-|------|------|--------|
-| `SILICONFLOW_API_KEY` | 硅基流动转录 | 仅 `--engine siliconflow` 需要 |
-| `NINEROUTER_BASE_URL` | 清理网关 base URL（任意 OpenAI 兼容端点） | 想用 LLM 清理时必填 |
-| `NINEROUTER_MODEL` | 清理模型名 | 想用 LLM 清理时必填 |
-| `NINEROUTER_API_KEY` | 清理网关密钥（本地 Ollama 可留空时用占位值） | 想用 LLM 清理时必填 |
-| `XHS_COOKIE` | 小红书登录 Cookie | 小红书链接需要 |
-| `DOUYIN_COOKIE` | 抖音登录 Cookie | 抖音链接建议提供 |
-| `KUAISHOU_COOKIE` | 快手登录 Cookie | 快手链接需要 |
+需要把结果推给用户时，按你自己 agent 的环境实现即可：读取 stdout 的路径，再走自身的
+文件发送能力（飞书 / Slack / Telegram 等），或把正文写进你的文档系统。
 
-`bcut` 与 `jianying` 完全免费，不需要任何 key。
-
-`--clean-model` / `--clean-base-url` 优先级高于环境变量。
-
-示例（DeepSeek 官方 API）：
-
-```bash
-export NINEROUTER_BASE_URL="https://api.deepseek.com/v1"
-export NINEROUTER_MODEL="deepseek-chat"
-export NINEROUTER_API_KEY="sk-..."
-```
-
-不想联网就用 `--clean rules`，完全不调任何 LLM。
-
-**agent 环境提醒**：环境变量必须在你启动 agent 的那个 shell/进程里生效（写进 `~/.bashrc`、
-`~/.zshrc` 或 agent 自己的 env 配置）。仅在子 shell 里 export 后另开 agent 会读不到，
-此时会自动降级为 `rules` 清理（功能正常，只是没 LLM 润色）。
-
-## 已知限制
-
-- `siliconflow`（Qwen3-ASR）接口只返回整段文本，无 segments/words 时间戳，因此无法产出带时间轴的 SRT
-- `jianying` 依赖第三方签名服务，不可控，失败会给出可读报错
-- bcut / jianying 为免费共享接口，主要支持中文，长音频建议分段处理
-- 已放弃 Groq：其 Cloudflare 边缘会拦截本机所在区域的出口 IP，与 API key 无关
-- 小红书/快手强依赖登录 Cookie，Cookie 失效即失败；小红书仅笔记内含视频时可下载
-- 抖音需要"新鲜 Cookie"（yt-dlp 原话），无 Cookie 时部分视频无法解析
-- 各平台签名算法会随平台更新而失效，超时可先试 `yt-dlp -U` 升级
-- 微信视频号 yt-dlp 不支持，需先用抓包工具（如 res-downloader）拿到直链，再把直链传给本工具
-- B站音频流必须带 Referer 才能下载（脚本已处理）
+中间产物由脚本自己清干净（下载的原始音视频、转码出的临时 mp3），你只需保留 `-o` 指定的
+产物。skill 目录下的代码与配置永远不要删。
