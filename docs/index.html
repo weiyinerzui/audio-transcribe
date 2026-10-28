@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>audio-transcribe 保姆级安装配置使用教程</title>
+<style>
+:root{
+  --bg:#0b0e14; --panel:#11161f; --panel2:#161c27; --line:#232b3a;
+  --fg:#e6edf3; --dim:#8b98a9; --acc:#4f9cf9; --grn:#3fb950; --yel:#d29922;
+  --red:#f85149; --pur:#a371f7; --mono:'JetBrains Mono','SF Mono',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:84px}
+body{
+  margin:0;background:var(--bg);color:var(--fg);line-height:1.78;
+  font:16px/1.78 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{display:flex;max-width:1400px;margin:0 auto}
+/* ---------- 侧栏 ---------- */
+nav{
+  position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;
+  width:270px;flex:0 0 270px;padding:26px 18px 40px;border-right:1px solid var(--line);
+}
+nav::-webkit-scrollbar{width:6px}
+nav::-webkit-scrollbar-thumb{background:#2b3547;border-radius:3px}
+nav .brand{font-weight:800;font-size:16px;letter-spacing:.3px;margin-bottom:4px}
+nav .brand span{color:var(--acc)}
+nav .sub{color:var(--dim);font-size:12px;margin-bottom:20px}
+nav ol{list-style:none;margin:0;padding:0;counter-reset:s}
+nav ol li{counter-increment:s;margin:1px 0}
+nav ol li a{
+  display:block;padding:6px 10px 6px 30px;position:relative;border-radius:7px;
+  color:var(--dim);text-decoration:none;font-size:13.5px;transition:.15s;
+}
+nav ol li a:before{
+  content:counter(s);position:absolute;left:8px;top:6px;font-size:11px;
+  color:#4a5568;font-family:var(--mono);
+}
+nav ol li a:hover{background:var(--panel2);color:var(--fg)}
+nav ol li a.on{background:#1b2433;color:var(--acc);font-weight:600}
+nav ol li a.on:before{color:var(--acc)}
+/* ---------- 正文 ---------- */
+main{flex:1;min-width:0;padding:44px 52px 140px;max-width:960px}
+h1{font-size:31px;line-height:1.3;margin:0 0 10px;letter-spacing:-.4px}
+.lede{color:var(--dim);font-size:15.5px;margin:0 0 8px}
+.meta{color:#5d6b7f;font-size:12.5px;font-family:var(--mono);margin-bottom:26px}
+h2{
+  font-size:22px;margin:54px 0 6px;padding-top:18px;letter-spacing:-.2px;
+  border-top:1px solid var(--line);
+}
+h2 .n{
+  display:inline-block;min-width:29px;height:29px;line-height:29px;text-align:center;
+  background:linear-gradient(135deg,#1f6feb,#4f9cf9);color:#fff;border-radius:8px;
+  font-size:14px;font-family:var(--mono);margin-right:11px;vertical-align:2px;
+}
+h3{font-size:16.5px;margin:30px 0 8px;color:#cfe0f5}
+h4{font-size:14.5px;margin:22px 0 6px;color:#b9c8da;font-weight:600}
+p{margin:11px 0}
+ul,ol{margin:11px 0;padding-left:24px}
+li{margin:5px 0}
+a{color:var(--acc)}
+code{
+  font-family:var(--mono);font-size:13.2px;background:#1a2230;color:#a5d6ff;
+  padding:2px 6px;border-radius:5px;border:1px solid #243044;
+}
+strong{color:#fff;font-weight:650}
+em{color:#c9d6e6;font-style:normal;background:#2a2213;padding:1px 5px;border-radius:4px}
+/* ---------- 代码块 ---------- */
+.cb{
+  position:relative;background:#0d1117;border:1px solid var(--line);border-radius:10px;
+  margin:14px 0;overflow:hidden;
+}
+.cb .bar{
+  display:flex;align-items:center;gap:7px;padding:8px 13px;background:#121821;
+  border-bottom:1px solid var(--line);font-size:11.5px;color:#6b7a8d;font-family:var(--mono);
+}
+.cb .bar i{width:9px;height:9px;border-radius:50%;background:#ff5f57;display:inline-block}
+.cb .bar i:nth-child(2){background:#febc2e}
+.cb .bar i:nth-child(3){background:#28c840}
+.cb .bar b{margin-left:7px;font-weight:500;color:#7d8b9e}
+.cb pre{margin:0;padding:15px 17px;overflow-x:auto;font-family:var(--mono);font-size:13.2px;line-height:1.65}
+.cb pre::-webkit-scrollbar{height:8px}
+.cb pre::-webkit-scrollbar-thumb{background:#2b3547;border-radius:4px}
+.k{color:#7ee787}.s{color:#a5d6ff}.c{color:#6e7681}.v{color:#ffa657}.p{color:#d2a8ff}
+/* ---------- 图片 ---------- */
+figure{margin:16px 0}
+figure img{width:100%;display:block;border-radius:9px;border:1px solid var(--line)}
+figcaption{color:var(--dim);font-size:12.5px;margin-top:7px;text-align:center}
+/* ---------- 提示框 ---------- */
+.box{border-radius:9px;padding:13px 17px;margin:15px 0;border-left:3px solid;font-size:14.5px}
+.box p:first-child{margin-top:0}.box p:last-child{margin-bottom:0}
+.tip{background:#0d1f16;border-color:var(--grn)}
+.tip .h{color:var(--grn);font-weight:700;display:block;margin-bottom:3px;font-size:13px}
+.warn{background:#211a0b;border-color:var(--yel)}
+.warn .h{color:var(--yel);font-weight:700;display:block;margin-bottom:3px;font-size:13px}
+.dan{background:#23100f;border-color:var(--red)}
+.dan .h{color:var(--red);font-weight:700;display:block;margin-bottom:3px;font-size:13px}
+.info{background:#0d1626;border-color:var(--acc)}
+.info .h{color:var(--acc);font-weight:700;display:block;margin-bottom:3px;font-size:13px}
+/* ---------- 表格 ---------- */
+table{width:100%;border-collapse:collapse;margin:15px 0;font-size:14px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#141b25;color:#aab8c9;font-weight:600;font-size:12.5px;letter-spacing:.3px}
+tr:hover td{background:#101620}
+td code{font-size:12.4px}
+/* ---------- 徽标 ---------- */
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0}
+.chip{
+  font-size:12px;padding:3px 10px;border-radius:99px;background:#16202e;
+  border:1px solid #243044;color:#9fb2c8;font-family:var(--mono);
+}
+.chip.g{border-color:#1f4d2b;color:#7ee787;background:#0d1f16}
+.chip.b{border-color:#1f3a5f;color:#79c0ff;background:#0d1626}
+/* ---------- 步骤卡 ---------- */
+.step{
+  background:var(--panel);border:1px solid var(--line);border-radius:11px;
+  padding:18px 20px;margin:16px 0;position:relative;
+}
+.step .tag{
+  position:absolute;top:-10px;left:16px;background:var(--acc);color:#fff;
+  font-size:11px;font-family:var(--mono);padding:2px 9px;border-radius:5px;font-weight:700;
+}
+.step h4{margin-top:6px}
+/* ---------- 顶部进度 ---------- */
+#prog{position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,#1f6feb,#4f9cf9);width:0;z-index:99;transition:width .1s}
+@media(max-width:1000px){
+  nav{display:none}
+  main{padding:26px 20px 90px}
+  h1{font-size:25px}
+  h2{font-size:19px}
+}
+</style>
+</head>
+<body>
+<div id="prog"></div>
+<div class="wrap">
+<nav>
+  <div class="brand">audio<span>-</span>transcribe</div>
+  <div class="sub">保姆级教程 · v1.2.0</div>
+  <ol>
+    <li><a href="#s0">这是什么</a></li>
+    <li><a href="#s1">装之前检查环境</a></li>
+    <li><a href="#s2">三种安装方式</a></li>
+    <li><a href="#s3">让 agent 自己装</a></li>
+    <li><a href="#s4">第一次跑通</a></li>
+    <li><a href="#s5">看懂输出</a></li>
+    <li><a href="#s6">三个引擎怎么选</a></li>
+    <li><a href="#s7">文稿清理</a></li>
+    <li><a href="#s8">配置 LLM 网关</a></li>
+    <li><a href="#s9">转录网页链接</a></li>
+    <li><a href="#s10">平台 Cookie</a></li>
+    <li><a href="#s11">参数全表</a></li>
+    <li><a href="#s12">在 agent 里用</a></li>
+    <li><a href="#s13">常见问题</a></li>
+    <li><a href="#s14">卸载升级</a></li>
+  </ol>
+</nav>
+<main>
+
+<h1>audio-transcribe 保姆级安装配置使用教程</h1>
+<p class="lede">从零开始：把音频、视频、网页链接变成带时间戳的字幕或干净文稿。每一步都有可复制命令和真实输出。</p>
+<div class="meta">版本 v1.2.0 &nbsp;·&nbsp; 适用 CC / Codex / OpenCode / pi / 裸 Python &nbsp;·&nbsp; 约 25 分钟读完，15 分钟跑通</div>
+
+<div class="chips">
+  <span class="chip g">零 API key 可用</span>
+  <span class="chip g">免费转录</span>
+  <span class="chip b">中文 / 英文</span>
+  <span class="chip b">SRT / TXT / JSON</span>
+  <span class="chip">MIT</span>
+</div>
+
+<!-- ============ 0 ============ -->
+<h2 id="s0"><span class="n">0</span>这是什么，能帮你干什么</h2>
+
+<p>一句话：<strong>把「声音」变成「文字」，并且把文字打扫干净。</strong></p>
+
+<p>它解决的是这样一类重复劳动——你手上有这些东西：</p>
+<ul>
+  <li>一场两小时的会议录音</li>
+  <li>一个下载下来的访谈视频</li>
+  <li>一个 B 站 / 抖音 / 小红书的技术分享链接</li>
+</ul>
+<p>你需要的是：一份能搜索、能引用、能直接贴进文档的文字稿。</p>
+
+<h3>它和其他转录工具有什么不一样</h3>
+
+<table>
+<tr><th style="width:26%">环节</th><th>它做了什么</th></tr>
+<tr><td><strong>取音频</strong></td><td>本地文件用 ffmpeg 抽音轨；网页链接自动下载（B站走官方 API，其余平台走 yt-dlp）</td></tr>
+<tr><td><strong>转录</strong></td><td>三个免费/低价引擎可选，毫秒级时间戳</td></tr>
+<tr><td><strong>清理</strong></td><td>删「嗯、啊、那个、就是」，合并「今天今天」，修同音错字，<strong>但严格保留时间轴</strong></td></tr>
+<tr><td><strong>输出</strong></td><td>SRT 字幕 / TXT 文稿 / JSON 时间轴</td></tr>
+</table>
+
+<div class="info">
+<span class="h">为什么叫「Agent Skill」</span>
+<p>它同时是两样东西：一个 <strong>普通 Python 脚本</strong>（命令行直接用），也是一个 <strong>Agent Skill</strong>（放进 agent 的 skills 目录，你只要说「把这个视频转成文字」，agent 自己就会调用）。两种用法装的是同一份代码。</p>
+</div>
+
+<h3>整个流程长这样</h3>
+
+<pre style="background:#0d1117;border:1px solid var(--line);border-radius:10px;padding:18px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.55;color:#8b98a9">
+  输入                          处理                                输出
+┌──────────────┐      ┌─────────────────────────┐      ┌──────────────────┐
+│ 本地音视频     │      │ ① 取音频                │      │  .srt  带时间字幕  │
+│  ├ mp4/mov   │─────▶│    ffmpeg / yt-dlp      │─────▶│  .txt  干净文稿    │
+│  ├ mp3/wav   │      │ ② 云转录（免费）         │      │  .json 时间轴数据  │
+│  └ m4a       │      │    bcut / jianying      │      └──────────────────┘
+│              │      │    硅基流动 Qwen3-ASR    │
+│ 网页链接      │      │ ③ 文稿清理（可选）        │              │
+│  ├ B站       │      │    LLM 润色 或 本地正则   │              ▼
+│  ├ 抖音/小红书 │      └─────────────────────────┘      stdout 只打印路径
+│  ├ 快手/微博  │                                       进度警告走 stderr
+│  └ YouTube   │
+└──────────────┘
+</pre>
+
+<div class="tip">
+<span class="h">关键设计：stdout 只有一行</span>
+<p>脚本把<strong>最终文件路径</strong>打到 stdout，所有进度和警告走 stderr。这样你可以 <code>OUT=$(python3 transcribe.py ...)</code> 直接拿到产物路径，不会被日志污染。</p>
+</div>
+
+<!-- ============ 1 ============ -->
+<h2 id="s1"><span class="n">1</span>装之前，先检查环境</h2>
+
+<p>只有一个硬性前提：<strong>Python 3.10 或更新</strong>。Linux / macOS 一般自带，Windows 需要单独装。</p>
+
+<h3>1.1 检查 Python</h3>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre><span class="c"># 看版本</span>
+python3 --version
+
+<span class="c"># 期望输出类似：Python 3.11.7 或更高</span></pre></div>
+
+<div class="warn">
+<span class="h">Windows 用户注意</span>
+<p>如果 <code>python3</code> 提示找不到命令，试 <code>python --version</code>。后面对所有命令里的 <code>python3</code> 都要换成 <code>python</code> 或 <code>py</code>。</p>
+</div>
+
+<p>版本低于 3.10 的话：</p>
+
+<table>
+<tr><th>系统</th><th>安装命令</th></tr>
+<tr><td>macOS</td><td><code>brew install python@3.12</code></td></tr>
+<tr><td>Ubuntu / Debian</td><td><code>sudo apt update &amp;&amp; sudo apt install python3.12 python3-pip</code></td></tr>
+<tr><td>Arch</td><td><code>sudo pacman -S python python-pip</code></td></tr>
+<tr><td>Windows</td><td>官网下载 <a href="https://www.python.org/downloads/">python.org</a>，安装时<strong>勾选 Add to PATH</strong></td></tr>
+</table>
+
+<h3>1.2 检查 ffmpeg（必须有）</h3>
+
+<p>ffmpeg 负责把视频里的音轨抽出来、转成模型能吃的格式。<strong>它不是 pip 包，必须系统安装。</strong></p>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>ffmpeg -version</pre></div>
+
+<figure>
+  <img src="img/07_verify.png" alt="验证 ffmpeg 与依赖">
+  <figcaption>三个命令都通过，说明环境就绪</figcaption>
+</figure>
+
+<p>没装的话：</p>
+
+<table>
+<tr><th>系统</th><th>安装命令</th></tr>
+<tr><td>macOS</td><td><code>brew install ffmpeg</code></td></tr>
+<tr><td>Ubuntu / Debian</td><td><code>sudo apt install ffmpeg</code></td></tr>
+<tr><td>Arch</td><td><code>sudo pacman -S ffmpeg</code></td></tr>
+<tr><td>Windows</td><td><code>winget install Gyan.FFmpeg</code></td></tr>
+</table>
+
+<h3>1.3 检查 git 和 pip</h3>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>git --version
+pip3 --version</pre></div>
+
+<p>没有 git 就直接下 ZIP（下一节会讲），没有 pip 就 <code>sudo apt install python3-pip</code>。</p>
+
+<h3>1.4 网络说明</h3>
+
+<p>两个引擎都不需要科学上网：</p>
+<ul>
+  <li><strong>bcut</strong> 走 B 站国内接口，无需 key，也无需代理</li>
+  <li><strong>jianying</strong> 走剪映接口，同样国内直连</li>
+</ul>
+<p>只有转录 <strong>YouTube 链接</strong>时才需要能访问 YouTube。</p>
+
+<!-- ============ 2 ============ -->
+<h2 id="s2"><span class="n">2</span>三种安装方式，选一种</h2>
+
+<div class="step">
+<div class="tag">方式 A</div>
+<h4>装成 agent skill（推荐，一次装好长期用）</h4>
+<p>如果你用 CC / Codex / OpenCode / pi，装到对应 skills 目录，之后直接说话就行。</p>
+</div>
+
+<h4>各家 agent 的目录对照</h4>
+
+<table>
+<tr><th>Agent</th><th>个人级安装路径</th></tr>
+<tr><td><strong>CC</strong> (Claude Code)</td><td><code>~/.claude/skills/audio-transcribe</code></td></tr>
+<tr><td><strong>Codex</strong></td><td><code>${CODEX_HOME:-~/.codex}/skills/audio-transcribe</code> 或 <code>~/.agents/skills/audio-transcribe</code></td></tr>
+<tr><td><strong>OpenCode</strong></td><td><code>~/.config/opencode/skills/audio-transcribe</code></td></tr>
+<tr><td><strong>pi</strong></td><td><code>~/.pi/agent/skills/audio-transcribe</code></td></tr>
+</table>
+
+<p>以 CC 为例，完整三步：</p>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端 · 方式 A</b></div><pre><span class="c"># 1. 建目录并克隆</span>
+mkdir -p ~/.claude/skills
+git clone https://github.com/weiyinerzui/audio-transcribe ~/.claude/skills/audio-transcribe
+
+<span class="c"># 2. 装 Python 依赖</span>
+pip3 install -r ~/.claude/skills/audio-transcribe/requirements.txt
+
+<span class="c"># 3. 验证（必须真的跑一遍）</span>
+python3 ~/.claude/skills/audio-transcribe/transcribe.py --help</pre></div>
+
+<div class="tip">
+<span class="h">装完要重启 agent</span>
+<p>skill 是 agent <strong>启动时扫描</strong>的。装完必须重启 agent 或开新会话，否则它不知道有这个 skill。</p>
+</div>
+
+<h4>github 连不上怎么办</h4>
+
+<p>国内直连 GitHub 经常失败。用镜像前缀就行：</p>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端 · 镜像</b></div><pre><span class="c"># 在完整地址前面加 https://gh-proxy.com/</span>
+git clone https://gh-proxy.com/https://github.com/weiyinerzui/audio-transcribe \
+  ~/.claude/skills/audio-transcribe</pre></div>
+
+<p>或者直接用浏览器打开仓库，点 <strong>Code → Download ZIP</strong>，解压后放进 skills 目录，<strong>确认目录名就是 <code>audio-transcribe</code></strong>。</p>
+
+<div class="step">
+<div class="tag">方式 B</div>
+<h4>只当命令行工具用（不装 agent 也能跑）</h4>
+<p>找一个你顺手的目录，克隆下来直接用。</p>
+</div>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端 · 方式 B</b></div><pre>mkdir -p ~/tools &amp;&amp; cd ~/tools
+git clone https://github.com/weiyinerzui/audio-transcribe
+cd audio-transcribe
+pip3 install -r requirements.txt
+
+<span class="c"># 之后任何地方都能这样调用</span>
+python3 ~/tools/audio-transcribe/transcribe.py --help</pre></div>
+
+<div class="step">
+<div class="tag">方式 C</div>
+<h4>多个 agent 共用一份（软链接）</h4>
+<p>不想在四个目录各克隆一遍，就装一份、软链过去。</p>
+</div>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端 · 方式 C</b></div><pre>git clone https://github.com/weiyinerzui/audio-transcribe ~/skills/audio-transcribe
+pip3 install -r ~/skills/audio-transcribe/requirements.txt
+
+mkdir -p ~/.claude/skills ~/.agents/skills ~/.config/opencode/skills ~/.pi/agent/skills
+ln -s ~/skills/audio-transcribe ~/.claude/skills/audio-transcribe
+ln -s ~/skills/audio-transcribe ~/.agents/skills/audio-transcribe
+ln -s ~/skills/audio-transcribe ~/.config/opencode/skills/audio-transcribe
+ln -s ~/skills/audio-transcribe ~/.pi/agent/skills/audio-transcribe</pre></div>
+
+<div class="warn">
+<span class="h">软链接的坑</span>
+<p>Windows 上 ln -s 需要管理员权限或开发者模式，容易失败。Windows 用户建议直接用<strong>方式 A</strong>，各装一份，或者只装一个 agent。</p>
+</div>
+
+<!-- ============ 3 ============ -->
+<h2 id="s3"><span class="n">3</span>懒人法：让 agent 自己装</h2>
+
+<p>不想敲命令？把下面这段<strong>整段复制</strong>给你的 agent（CC / Codex / OpenCode / pi 都行），它会自己判断路径、装依赖、做验证。</p>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>复制这段给 agent</b></div><pre>请帮我安装并配置 audio-transcribe skill，这是一个把音频/视频转成字幕或文稿的 Agent Skill。
+
+仓库：https://github.com/weiyinerzui/audio-transcribe
+
+请按以下步骤执行，每步完成后告诉我结果：
+
+1. 判断我当前用的 agent 类型，确定 skill 安装目录：
+   - CC：~/.claude/skills/audio-transcribe
+   - Codex：${CODEX_HOME:-~/.codex}/skills/audio-transcribe（也支持 ~/.agents/skills/）
+   - OpenCode：~/.config/opencode/skills/audio-transcribe
+   - pi：~/.pi/agent/skills/audio-transcribe
+   如果目录下已有同名 skill，先告诉我有旧版本，问我是否覆盖，不要直接覆盖。
+
+2. 克隆仓库到该目录（不要克隆到临时目录再复制）：
+   git clone https://github.com/weiyinerzui/audio-transcribe &lt;上述目录&gt;
+
+3. 检查并安装依赖：
+   - 确认 python3 版本 &gt;= 3.10
+   - 确认 ffmpeg 和 ffprobe 在 PATH 中（缺失时告诉我对应平台的安装命令，不要擅自 sudo）
+   - 确认 yt-dlp 可用
+   - 执行 pip install -r &lt;目录&gt;/requirements.txt
+
+4. 验证安装（必须真的跑一遍，不要只看文件是否存在）：
+   python3 &lt;目录&gt;/transcribe.py --help
+   然后把执行结果摘要给我。
+
+5. 询问我要不要配置 LLM 清理网关（可选，不配也能用，会自动降级为本地正则清理）：
+   需要配置的话，我提供 base_url / model / api_key 后，帮我写进 shell 启动文件
+   （~/.bashrc 或 ~/.zshrc），变量名为：
+     NINEROUTER_BASE_URL / NINEROUTER_MODEL / NINEROUTER_API_KEY
+
+注意事项：
+- 安装完成后告诉我这个 skill 的绝对路径，以及怎么用它。
+- 不要删除我的原始音视频文件。
+- 不要把 api_key 或 Cookie 写进任何会提交到 git 的文件，也不要在回复里完整打印出来。
+- 如果某一步失败，告诉我具体错误和修复建议，不要静默跳过。</pre></div>
+
+<p>装好后直接说「把这个视频转成字幕：&lt;链接&gt;」，agent 就会自己调用。</p>
+
+<!-- ============ 4 ============ -->
+<h2 id="s4"><span class="n">4</span>第一次跑通</h2>
+
+<p>准备一个测试文件。手边没有的话，用手机录 10 秒说话，导成 mp3 或 m4a 拉到电脑上。</p>
+
+<h3>4.1 先看帮助</h3>
+
+<figure>
+  <img src="img/01_help.png" alt="--help 输出">
+  <figcaption>能看到这个界面，说明装好了</figcaption>
+</figure>
+
+<h3>4.2 跑第一条命令</h3>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>python3 ~/tools/audio-transcribe/transcribe.py talk.mp4 \
+  <span class="v">--engine</span> <span class="s">bcut</span> \
+  <span class="v">-o</span> <span class="s">字幕.srt</span></pre></div>
+
+<figure>
+  <img src="img/02_run.png" alt="转录运行过程">
+  <figcaption>三步进度：(1/3) 准备音频 → (2/3) 转录 → (3/3) 清理</figcaption>
+</figure>
+
+<div class="tip">
+<span class="h">三条命令的含义</span>
+<p><code>--engine bcut</code> 用免费引擎，不登录、不要 key。<br>
+<code>-o 字幕.srt</code> 输出到这个文件，<strong>扩展名决定格式</strong>。<br>
+前面那一长串是脚本路径，用绝对路径最稳。</p>
+</div>
+
+<h3>4.3 打开结果</h3>
+
+<figure>
+  <img src="img/03_srt.png" alt="SRT 内容">
+  <figcaption>标准 SRT 格式：序号 + 时间轴 + 文本</figcaption>
+</figure>
+
+<p>好了。到这里你已经会用 80% 了。</p>
+
+<div class="info">
+<span class="h">想确认清理有没有生效</span>
+<p>对比一下 <code>--clean none</code> 和默认的输出。前者会保留「嗯」「那个」「就是」这些，后者不会。音量词删干净了，说明清理生效了。</p>
+</div>
+
+<!-- ============ 5 ============ -->
+<h2 id="s5"><span class="n">5</span>看懂输出：三种格式怎么选</h2>
+
+<table>
+<tr><th style="width:12%">格式</th><th style="width:26%">长什么样</th><th>什么时候用</th></tr>
+<tr><td><strong>.srt</strong></td><td>序号 + 时间码 + 文本</td><td>要放进视频剪辑软件、播放器、B站字幕、剪映</td></tr>
+<tr><td><strong>.txt</strong></td><td>纯文字，按段落</td><td>要读、要贴进文档、要交给 ChatGPT 总结</td></tr>
+<tr><td><strong>.json</strong></td><td>结构化，含毫秒级时间轴</td><td>要写程序处理、要做自己的应用</td></tr>
+</table>
+
+<h3>JSON 的结构</h3>
+
+<figure>
+  <img src="img/08_json.png" alt="JSON 输出结构">
+  <figcaption>has_timing 表示是否有时间戳；segments 里每条都有 start_ms/end_ms</figcaption>
+</figure>
+
+<table>
+<tr><th>字段</th><th>含义</th></tr>
+<tr><td><code>source</code></td><td>输入文件名或链接</td></tr>
+<tr><td><code>has_timing</code></td><td>是否有时间戳（siliconflow 引擎为 false）</td></tr>
+<tr><td><code>text</code></td><td>全文拼接</td></tr>
+<tr><td><code>segments[]</code></td><td>逐段：<code>text</code> / <code>start_ms</code> / <code>end_ms</code></td></tr>
+</table>
+
+<div class="warn">
+<span class="h">格式由扩展名决定</span>
+<p><code>-o a.srt</code> 就是 SRT，<code>-o a.txt</code> 就是 TXT，不用额外写 <code>--format</code>。<br>
+写了 <code>--format</code> 则以它为准。</p>
+</div>
+
+<!-- ============ 6 ============ -->
+<h2 id="s6"><span class="n">6</span>三个引擎怎么选</h2>
+
+<table>
+<tr><th>引擎</th><th>要 key 吗</th><th>时间戳</th><th>推荐场景</th></tr>
+<tr><td><strong>bcut</strong></td><td>❌ 不要</td><td>✅ 毫秒级</td><td><strong>默认首选。</strong>B 站必剪接口，免费稳定</td></tr>
+<tr><td><strong>jianying</strong></td><td>❌ 不要</td><td>✅ 毫秒级</td><td>bcut 失败时备选。依赖第三方签名，<strong>可能失效</strong></td></tr>
+<tr><td><strong>siliconflow</strong></td><td>✅ 要</td><td>❌ 无</td><td>只要纯文稿。Qwen3-ASR，中文效果不错</td></tr>
+</table>
+
+<h3>默认就用 bcut</h3>
+
+<p>99% 的情况 <code>--engine bcut</code> 就够了：免费、不要注册、有精确时间戳、中文识别准。</p>
+
+<h3>bcut 挂了怎么办</h3>
+
+<figure>
+  <img src="img/06_engine.png" alt="切换引擎">
+  <figcaption>jianying 失败时，换回 bcut 或改用 txt 格式</figcaption>
+</figure>
+
+<p>顺序建议：</p>
+<ol>
+  <li>先重试一次 <code>bcut</code>（往往是瞬时网络问题）</li>
+  <li>再试 <code>--engine jianying</code></li>
+  <li>都不行，用 <code>--engine siliconflow</code>（需要 <code>SILICONFLOW_API_KEY</code>）</li>
+</ol>
+
+<h3>siliconflow 需要 key</h3>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre><span class="c"># 去 https://cloud.siliconflow.cn 注册拿 key</span>
+<span class="v">export</span> SILICONFLOW_API_KEY=<span class="s">"sk-xxxxxxxx"</span>
+
+python3 transcribe.py talk.mp4 --engine siliconflow -o 文稿.txt</pre></div>
+
+<div class="warn">
+<span class="h">siliconflow 没有时间戳</span>
+<p>它只返回整段文本，所以<strong>做不了 SRT</strong>。如果你要 <code>-o x.srt</code>，它会自动降级成 txt 并提示你。</p>
+</div>
+
+<!-- ============ 7 ============ -->
+<h2 id="s7"><span class="n">7</span>文稿清理：三种模式</h2>
+
+<p>转录出来的原始文字是「毛坯」——有「嗯」「啊」「那个」「就是」，有「今天今天」这种重复，有同音错字。清理就是给毛坯做装修。</p>
+
+<table>
+<tr><th>模式</th><th>联网</th><th>质量</th><th>什么时候用</th></tr>
+<tr><td><code>--clean llm</code><br><span style="color:#8b98a9;font-size:12px">（默认）</span></td><td>是</td><td>最好</td><td>默认用这个。能跨句纠错、理解上下文</td></tr>
+<tr><td><code>--clean rules</code></td><td>否</td><td>够用</td><td>不想联网、不想把内容发给任何第三方</td></tr>
+<tr><td><code>--clean none</code></td><td>否</td><td>原始</td><td>要对照、要做研究、怀疑清理改错了原意</td></tr>
+</table>
+
+<h3>清理到底改了什么</h3>
+
+<table>
+<tr><th style="width:32%">类型</th><th>处理</th></tr>
+<tr><td>语气词</td><td>删除「嗯 / 啊 / 那个 / 就是 / 对吧 / 这个这个」</td></tr>
+<tr><td>重复卡顿</td><td>「今天今天我们」→「今天我们」</td></tr>
+<tr><td>同音错字</td><td>按上下文修正明显识别错误</td></tr>
+<tr><td><strong>时间轴</strong></td><td><strong>完整保留。</strong>只删语气词所在的段，不重排时间</td></tr>
+<tr><td><strong>原意</strong></td><td><strong>绝不改写、不总结、不翻译</strong></td></tr>
+</table>
+
+<div class="tip">
+<span class="h">清理失败 ≠ 转录失败</span>
+<p>这是最容易误判的地方。如果 <code>--clean llm</code> 因为网络或没配网关失败，它会<strong>自动降级成 <code>rules</code></strong>，产物照常生成，只是没用 LLM 润色。</p>
+</div>
+
+<figure>
+  <img src="img/05_degrade.png" alt="降级提示">
+  <figcaption>看到「已降级为本地规则清理」是正常兜底，不是报错</figcaption>
+</figure>
+
+<!-- ============ 8 ============ -->
+<h2 id="s8"><span class="n">8</span>配置 LLM 网关（可选但强烈建议）</h2>
+
+<p>这一步决定清理质量。<strong>不配也能用</strong>，配了效果明显更好。</p>
+
+<h3>8.1 支持的网关</h3>
+
+<p>任何 <strong>OpenAI 兼容</strong>接口都行：</p>
+<ul>
+  <li>DeepSeek 官方 API</li>
+  <li>OpenAI 官方</li>
+  <li>硅基流动</li>
+  <li>本地 Ollama</li>
+  <li>one-api / new-api 自建网关</li>
+  <li>公司的内部网关</li>
+</ul>
+
+<h3>8.2 三个环境变量</h3>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端 · 以 DeepSeek 为例</b></div><pre><span class="v">export</span> NINEROUTER_BASE_URL=<span class="s">"https://api.deepseek.com/v1"</span>
+<span class="v">export</span> NINEROUTER_MODEL=<span class="s">"deepseek-chat"</span>
+<span class="v">export</span> NINEROUTER_API_KEY=<span class="s">"sk-你的key"</span></pre></div>
+
+<div class="info">
+<span class="h">变量名为什么叫 NINEROUTER</span>
+<p>历史原因。它的语义就是「清理用的 LLM 网关」，<strong>跟具体服务商无关</strong>。填 DeepSeek、OpenAI、Ollama 都可以。</p>
+</div>
+
+<h3>8.3 让变量永久生效</h3>
+
+<p>只在终端 export 一次，关掉窗口就没了。写进 shell 启动文件才持久：</p>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre><span class="c"># macOS 默认 zsh</span>
+cat &gt;&gt; ~/.zshrc &lt;&lt;<span class="s">'EOF'</span>
+export NINEROUTER_BASE_URL="https://api.deepseek.com/v1"
+export NINEROUTER_MODEL="deepseek-chat"
+export NINEROUTER_API_KEY="sk-你的key"
+<span class="s">EOF</span>
+source ~/.zshrc
+
+<span class="c"># Linux 一般是 bash</span>
+cat &gt;&gt; ~/.bashrc &lt;&lt;<span class="s">'EOF'</span>
+export NINEROUTER_BASE_URL="https://api.deepseek.com/v1"
+export NINEROUTER_MODEL="deepseek-chat"
+export NINEROUTER_API_KEY="sk-你的key"
+<span class="s">EOF</span>
+source ~/.bashrc</pre></div>
+
+<div class="dan">
+<span class="h">安全提醒</span>
+<p>API key 等同于钱包。不要提交到 git，不要贴在公开聊天里，不要在截图里露出。写进 <code>~/.zshrc</code> 是可以的（本机私有文件）。</p>
+</div>
+
+<h3>8.4 不写环境变量，直接传参数</h3>
+
+<p>适合临时用一次，或不想改 shell 配置：</p>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>python3 transcribe.py talk.mp4 -o x.srt \
+  <span class="v">--clean-base-url</span> <span class="s">"https://api.deepseek.com/v1"</span> \
+  <span class="v">--clean-model</span> <span class="s">"deepseek-chat"</span></pre></div>
+
+<h3>8.5 agent 用户特别注意</h3>
+
+<div class="warn">
+<span class="h">环境变量必须在 agent 进程里生效</span>
+<p>如果你在 CC / Codex 里用这个 skill，而你只在普通终端 export 过，<strong>agent 可能读不到</strong>——它有自己的环境。</p>
+<p>解决办法：把变量写进 <code>~/.zshrc</code> / <code>~/.bashrc</code> 后<strong>重启 agent</strong>；或者写进 agent 自己的配置里。</p>
+<p>读不到时不会报错，只会静默降级成 <code>rules</code>。</p>
+</div>
+
+<h3>8.6 长音频稳定性（不用你操心）</h3>
+
+<p>1 小时以上的音频，清理环节容易因为模型慢而超时。这个已经被专门修过了：</p>
+
+<table>
+<tr><th>机制</th><th>作用</th></tr>
+<tr><td><strong>流式请求</strong></td><td>超时判定的是「相邻数据块间隔」（默认 120s），不是整段生成总时长</td></tr>
+<tr><td><strong>小分块</strong></td><td>默认 1200 字/块，在段落 → 行 → 句子边界切，不切断语义</td></tr>
+<tr><td><strong>分块级容错</strong></td><td>单块失败只保留该块原文，其他块照常；全部失败才降级 rules</td></tr>
+<tr><td><strong>预算递增</strong></td><td>输出被截断时自动加大 max_tokens 重试</td></tr>
+</table>
+
+<p>实测 1 小时视频（2.9 万字，切成 25 块）：全部成功、零降级、零乱码。</p>
+
+<p>想微调（一般不用动）：</p>
+
+<table>
+<tr><th>变量</th><th>默认</th><th>作用</th></tr>
+<tr><td><code>NINEROUTER_CLEAN_CHUNK</code></td><td>1200</td><td>每块字符上限，越小越稳</td></tr>
+<tr><td><code>NINEROUTER_CLEAN_BATCH</code></td><td>30</td><td>带时间戳时每批字幕段数</td></tr>
+<tr><td><code>NINEROUTER_CLEAN_READ_TIMEOUT</code></td><td>120</td><td>流式相邻数据块间隔超时（秒）</td></tr>
+</table>
+
+<!-- ============ 9 ============ -->
+<h2 id="s9"><span class="n">9</span>转录网页链接</h2>
+
+<p>直接把链接当输入，不需要先下载视频。</p>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>python3 ~/tools/audio-transcribe/transcribe.py \
+  <span class="s">"https://www.bilibili.com/video/BV1xx411c7XX"</span> \
+  <span class="v">--engine</span> bcut <span class="v">-o</span> 文稿.txt</pre></div>
+
+<figure>
+  <img src="img/04_link.png" alt="链接转录">
+  <figcaption>自动下载音频，然后走同样的转录 + 清理流程</figcaption>
+</figure>
+
+<h3>支持的平台</h3>
+
+<table>
+<tr><th>平台</th><th>要 Cookie</th><th>说明</th></tr>
+<tr><td>B 站 / b23.tv</td><td>❌ 不要</td><td>开箱即用，支持分P（<code>?p=3</code>）</td></tr>
+<tr><td>微博</td><td>❌ 一般不要</td><td>走 yt-dlp</td></tr>
+<tr><td>YouTube</td><td>❌</td><td>需能访问 YouTube</td></tr>
+<tr><td>抖音</td><td>⚠️ 建议</td><td>部分视频需要新鲜 Cookie</td></tr>
+<tr><td>小红书</td><td>✅ 必须</td><td>且只有视频笔记才能下</td></tr>
+<tr><td>快手</td><td>✅ 必须</td><td>—</td></tr>
+<tr><td>微信视频号</td><td>—</td><td><strong>不支持</strong>，需先拿直链</td></tr>
+</table>
+
+<h3>分P 怎么指定</h3>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre><span class="c"># 第 3 个分P</span>
+python3 transcribe.py "https://www.bilibili.com/video/BV1xx411c7XX?p=3" --engine bcut -o p3.srt</pre></div>
+
+<!-- ============ 10 ============ -->
+<h2 id="s10"><span class="n">10</span>平台 Cookie 怎么配</h2>
+
+<p>只有小红书、快手必须配，抖音建议配。</p>
+
+<h3>10.1 拿到 Cookie</h3>
+
+<ol>
+  <li>Chrome 打开目标网站，<strong>登录</strong></li>
+  <li>按 <code>F12</code> 打开开发者工具</li>
+  <li>切到 <strong>Network</strong>（网络）标签</li>
+  <li>刷新页面，点任意一个请求</li>
+  <li>在 <strong>Request Headers</strong> 里找到 <code>Cookie:</code>，<strong>复制整行的值</strong></li>
+</ol>
+
+<h3>10.2 设置环境变量</h3>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre><span class="v">export</span> XHS_COOKIE=<span class="s">"a1=...; web_session=..."</span>
+<span class="v">export</span> DOUYIN_COOKIE=<span class="s">"ttwid=...; odin_tt=..."</span>
+<span class="v">export</span> KUAISHOU_COOKIE=<span class="s">"kuaishou.la_gk=..."</span>
+
+python3 transcribe.py <span class="s">"https://www.xiaohongshu.com/explore/xxxx"</span> --engine bcut -o 笔记.txt</pre></div>
+
+<div class="dan">
+<span class="h">Cookie 等于你的登录态</span>
+<p>拿到 Cookie 就能以你的身份操作账号。<strong>绝不要</strong>提交进 git、贴给别人、或放进截图。<br>
+本工具只通过环境变量读取，不接受文件传入，就是为了避免误提交。</p>
+</div>
+
+<h3>10.3 Cookie 失效的表现</h3>
+
+<p>抖音常见报错：<code>Fresh cookies are needed</code>。意思是 Cookie 过期了，重新登录再复制一次即可。</p>
+
+<!-- ============ 11 ============ -->
+<h2 id="s11"><span class="n">11</span>参数全表</h2>
+
+<table>
+<tr><th style="width:24%">参数</th><th style="width:14%">必填</th><th>说明</th></tr>
+<tr><td><code>input</code></td><td>是</td><td>本地文件路径，或网页链接</td></tr>
+<tr><td><code>--engine</code></td><td>是</td><td><code>bcut</code> / <code>jianying</code> / <code>siliconflow</code></td></tr>
+<tr><td><code>-o, --output</code></td><td>否</td><td>输出路径，<strong>扩展名决定格式</strong></td></tr>
+<tr><td><code>--format</code></td><td>否</td><td><code>srt</code> / <code>json</code> / <code>txt</code>，覆盖扩展名推断</td></tr>
+<tr><td><code>--clean</code></td><td>否</td><td><code>llm</code>（默认）/ <code>rules</code> / <code>none</code></td></tr>
+<tr><td><code>--model</code></td><td>否</td><td>ASR 模型名，仅 siliconflow 用</td></tr>
+<tr><td><code>--clean-model</code></td><td>否</td><td>清理用 LLM 模型名</td></tr>
+<tr><td><code>--clean-base-url</code></td><td>否</td><td>清理网关地址，覆盖环境变量</td></tr>
+</table>
+
+<h3>环境变量全表</h3>
+
+<table>
+<tr><th style="width:34%">变量</th><th>用途</th><th style="width:16%">必需性</th></tr>
+<tr><td><code>SILICONFLOW_API_KEY</code></td><td>硅基流动转录</td><td>仅用该引擎时</td></tr>
+<tr><td><code>NINEROUTER_BASE_URL</code></td><td>清理网关地址</td><td>想用 LLM 清理时</td></tr>
+<tr><td><code>NINEROUTER_MODEL</code></td><td>清理模型名</td><td>想用 LLM 清理时</td></tr>
+<tr><td><code>NINEROUTER_API_KEY</code></td><td>清理网关密钥</td><td>想用 LLM 清理时</td></tr>
+<tr><td><code>XHS_COOKIE</code></td><td>小红书 Cookie</td><td>小红书链接</td></tr>
+<tr><td><code>DOUYIN_COOKIE</code></td><td>抖音 Cookie</td><td>抖音链接建议</td></tr>
+<tr><td><code>KUAISHOU_COOKIE</code></td><td>快手 Cookie</td><td>快手链接</td></tr>
+</table>
+
+<h3>常用组合速查</h3>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>复制即用</b></div><pre><span class="c"># 1. 视频 → 字幕（最常用，免费）</span>
+python3 transcribe.py 视频.mp4 --engine bcut -o 字幕.srt
+
+<span class="c"># 2. 视频 → 纯文稿</span>
+python3 transcribe.py 视频.mp4 --engine bcut --format txt -o 文稿.txt
+
+<span class="c"># 3. 完全离线，不联网</span>
+python3 transcribe.py 视频.mp4 --engine bcut --clean rules -o 字幕.srt
+
+<span class="c"># 4. B站链接 → 文稿</span>
+python3 transcribe.py "https://www.bilibili.com/video/BVxxx" --engine bcut -o 文稿.txt
+
+<span class="c"># 5. 只要原始识别结果</span>
+python3 transcribe.py 视频.mp4 --engine bcut --clean none -o 原文.srt
+
+<span class="c"># 6. 结构化数据</span>
+python3 transcribe.py 视频.mp4 --engine bcut -o data.json
+
+<span class="c"># 7. 只拿产物路径（脚本里用）</span>
+OUT=$(python3 transcribe.py 视频.mp4 --engine bcut -o x.srt 2&gt;/dev/null)
+echo "产物在: $OUT"</pre></div>
+
+<!-- ============ 12 ============ -->
+<h2 id="s12"><span class="n">12</span>在 agent 里怎么用</h2>
+
+<p>装成 skill 之后，你不需要记命令，直接说话。</p>
+
+<h3>12.1 怎么触发</h3>
+
+<table>
+<tr><th>你说</th><th>agent 会做</th></tr>
+<tr><td>「把这个视频转成字幕：&lt;路径&gt;」</td><td>调用 bcut 引擎输出 SRT</td></tr>
+<tr><td>「这段录音帮我整理成文字稿」</td><td>输出 TXT，默认 LLM 清理</td></tr>
+<tr><td>「转录这个 B 站视频：&lt;链接&gt;」</td><td>下载 + 转录 + 清理</td></tr>
+<tr><td>「把会议录音里的废话去掉」</td><td>转录 + LLM 清理</td></tr>
+<tr><td>「这个视频讲了什么」</td><td>转录后直接总结</td></tr>
+</table>
+
+<h3>12.2 建议的对话方式</h3>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>给 agent 的话</b></div><pre>帮我转录这个视频，输出带时间戳的字幕：
+
+/Users/me/Downloads/访谈.mp4
+
+如果清理网关没配置，就直接用本地规则清理，别因为清理失败就报错。</pre></div>
+
+<h3>12.3 你要提醒 agent 的三件事</h3>
+
+<div class="tip">
+<span class="h">1. 用绝对路径</span>
+<p>让它调用 <code>&lt;skill目录&gt;/transcribe.py</code> 的绝对路径，而不是假设它在当前目录。</p>
+</div>
+
+<div class="tip">
+<span class="h">2. 清理失败不算失败</span>
+<p>明确告诉它：降级到 rules 是正常兜底，产物有效。否则有些 agent 会误判为失败并重跑。</p>
+</div>
+
+<div class="tip">
+<span class="h">3. 长音频要耐心</span>
+<p>1 小时音频全程 30–45 分钟。告诉它「慢慢跑，别中断」。</p>
+</div>
+
+<h3>12.4 不触发怎么办</h3>
+
+<ol>
+  <li>确认目录名是 <code>audio-transcribe</code></li>
+  <li>确认 <code>SKILL.md</code> 就在目录<strong>里面</strong>（不要变成 <code>SKILL.md.txt</code>）</li>
+  <li><strong>重启 agent</strong> —— skill 是启动时扫描的</li>
+  <li>还是不行就直接点名：「用 audio-transcribe 这个 skill 转录这个文件」</li>
+</ol>
+
+<!-- ============ 13 ============ -->
+<h2 id="s13"><span class="n">13</span>常见问题</h2>
+
+<h3>Q：报错 <code>ffmpeg not found</code></h3>
+<p>ffmpeg 没装或不在 PATH。按第 1.2 节装一下，装完 <strong>重开终端</strong>。</p>
+
+<h3>Q：转录出来的全是乱码</h3>
+<p>旧版本 bug，v1.1.0 已修（流式响应没指定 UTF-8 解码）。升级到最新版：</p>
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>cd ~/.claude/skills/audio-transcribe &amp;&amp; git pull</pre></div>
+
+<h3>Q：清理没生效，文稿里还有「嗯」「啊」</h3>
+<p>三种可能：</p>
+<ol>
+  <li>没配 <code>NINEROUTER_*</code>，静默降级成 rules 了（rules 只能删明显语气词）</li>
+  <li>配了但 agent 进程读不到 —— 重启 agent</li>
+  <li>确实用了 <code>--clean none</code></li>
+</ol>
+<p>排查：跑一次看 stderr 有没有「已降级」字样。</p>
+
+<h3>Q：<code>siliconflow</code> 出不了 SRT</h3>
+<p>设计如此。该引擎不返回时间戳。要 SRT 就换 <code>bcut</code>。</p>
+
+<h3>Q：<code>jianying</code> 报签名错误</h3>
+<p>它依赖第三方签名服务，会失效，不受本工具控制。换 <code>bcut</code>。</p>
+
+<h3>Q：B 站链接下载失败</h3>
+<p>先升级 yt-dlp：</p>
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>pip3 install -U yt-dlp</pre></div>
+<p>B 站有专门的官方 API 通道，一般比 yt-dlp 更稳。如果仍然失败，确认链接是完整地址（不是只有 BV 号）。</p>
+
+<h3>Q：跑到一半「像卡住了」</h3>
+<p>正常。看 stderr 的「清理第 N/M 块完成」，只要数字在涨就是在跑。1 小时音频要 30–45 分钟。</p>
+
+<h3>Q：能转录英文吗</h3>
+<p>能。bcut 对英文识别可用，实测英文技术演讲效果良好。清理阶段会保持原语言，不翻译。</p>
+
+<h3>Q：能转录方言吗</h3>
+<p>普通话效果最好。粤语、四川话等有一定支持但不保证。方言重建议用语料更多的商业 API。</p>
+
+<h3>Q：会不会把我的录音传到什么地方</h3>
+<p>转录必须上传音频到 bcut / jianying / siliconflow 的接口，这是云转录的固有代价。清理环节：</p>
+<ul>
+  <li><code>--clean rules</code> 和 <code>none</code>：<strong>完全本地，不联网</strong></li>
+  <li><code>--clean llm</code>：把<strong>文字</strong>发到你配置的网关</li>
+</ul>
+<p>涉密内容请用 <code>--clean rules</code>，并注意转录本身仍需上传音频。</p>
+
+<h3>Q：Windows 能用吗</h3>
+<p>能。注意三点：命令里的 <code>python3</code> 换成 <code>python</code>；路径用引号包起来；软链接方式不建议用。</p>
+
+<!-- ============ 14 ============ -->
+<h2 id="s14"><span class="n">14</span>卸载 / 升级 / 换版本</h2>
+
+<h3>升级到最新版</h3>
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>cd ~/.claude/skills/audio-transcribe
+git pull
+pip3 install -r requirements.txt --upgrade
+<span class="c"># 重启 agent</span></pre></div>
+
+<h3>卸载</h3>
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>rm -rf ~/.claude/skills/audio-transcribe
+<span class="c"># 顺便清掉 shell 里的环境变量（可选）</span></pre></div>
+
+<h3>查看当前版本</h3>
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>cd ~/.claude/skills/audio-transcribe
+git log --oneline -1
+git tag --points-at HEAD</pre></div>
+
+<h3>版本历史</h3>
+<table>
+<tr><th style="width:14%">版本</th><th>变化</th></tr>
+<tr><td>v1.2.0</td><td>SKILL.md 精简重构（6.4K → 3.0K 字符），拆出 <code>references/</code> 按需加载；README 加 agent 自动安装 Prompt</td></tr>
+<tr><td>v1.1.0</td><td><strong>长音频清理不再超时降级</strong>：流式请求 + 小分块 + 分块级容错 + 预算递增；修复中文乱码</td></tr>
+<tr><td>v1.0.0</td><td>首个公开版</td></tr>
+</table>
+
+<!-- ============ 结尾 ============ -->
+<h2 style="border-top:none;padding-top:30px"><span class="n">✓</span>15 分钟速通清单</h2>
+
+<p>如果你只想最快跑起来，照这个顺序做，别管其他：</p>
+
+<div class="step">
+<div class="tag">1</div>
+<h4>确认 python3 和 ffmpeg</h4>
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>python3 --version &amp;&amp; ffmpeg -version | head -1</pre></div>
+</div>
+
+<div class="step">
+<div class="tag">2</div>
+<h4>克隆 + 装依赖</h4>
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>mkdir -p ~/.claude/skills
+git clone https://github.com/weiyinerzui/audio-transcribe ~/.claude/skills/audio-transcribe
+pip3 install -r ~/.claude/skills/audio-transcribe/requirements.txt</pre></div>
+</div>
+
+<div class="step">
+<div class="tag">3</div>
+<h4>跑通第一条</h4>
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>python3 ~/.claude/skills/audio-transcribe/transcribe.py 你的文件.mp4 \
+  --engine bcut -o 字幕.srt</pre></div>
+</div>
+
+<div class="step">
+<div class="tag">4</div>
+<h4>（可选）配 LLM 网关提升清理质量</h4>
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>echo 'export NINEROUTER_BASE_URL="https://api.deepseek.com/v1"' &gt;&gt; ~/.zshrc
+echo 'export NINEROUTER_MODEL="deepseek-chat"' &gt;&gt; ~/.zshrc
+echo 'export NINEROUTER_API_KEY="sk-你的key"' &gt;&gt; ~/.zshrc
+source ~/.zshrc</pre></div>
+</div>
+
+<p style="margin-top:26px;color:#5d6b7f;font-size:13px;border-top:1px solid var(--line);padding-top:18px">
+仓库：<a href="https://github.com/weiyinerzui/audio-transcribe">github.com/weiyinerzui/audio-transcribe</a> &nbsp;·&nbsp;
+协议 MIT &nbsp;·&nbsp; 转录协议移植自 <a href="https://github.com/WEIFENG2333/VideoCaptioner">VideoCaptioner</a>
+</p>
+
+</main>
+</div>
+<script>
+// 滚动进度条
+addEventListener('scroll',()=>{
+  const h=document.documentElement;
+  const p=h.scrollTop/(h.scrollHeight-h.clientHeight)*100;
+  document.getElementById('prog').style.width=p+'%';
+},{passive:true});
+
+// 目录高亮
+const links=[...document.querySelectorAll('nav a')];
+const secs=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const io=new IntersectionObserver(es=>{
+  es.forEach(e=>{
+    if(e.isIntersecting){
+      links.forEach(l=>l.classList.toggle('on',l.getAttribute('href')==='#'+e.target.id));
+    }
+  });
+},{rootMargin:'-84px 0px -70% 0px'});
+secs.forEach(s=>io.observe(s));
+</script>
+</body>
+</html>

@@ -6,6 +6,11 @@
 
 **免费开箱即用**：默认走 B 站必剪（bcut）云转录接口，不需要任何 API key，本地 ASR 模型一个都不跑。
 
+**[📖 保姆级安装配置使用教程](docs/index.html)** —— 从零开始的图文分步指南，每一步都有可复制的命令和真实输出。
+
+<a href="https://weiyinerzui.github.io/audio-transcribe/"><img src="https://img.shields.io/badge/在线教程-GitHub%20Pages-4f9cf9?style=flat-square" alt="在线教程"></a>
+<a href="docs/media/tutorial.mp4"><img src="https://img.shields.io/badge/视频教程-57s%20MP4-3fb950?style=flat-square" alt="视频教程"></a>
+
 ```
 本地文件 / 网页链接
    │
