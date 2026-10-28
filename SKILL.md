@@ -4,7 +4,7 @@ description: 音频/视频转录为字幕或纯文稿，并自动清理口误、
 license: MIT
 compatibility: 需要 python3 (3.10+)、ffmpeg/ffprobe，链接输入另需 yt-dlp；适用于 Claude Code / Codex / OpenCode / pi 等支持 Agent Skills 的 agent，也可直接当 Python 脚本运行。
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   language: zh-CN
   category: media
   repository: https://github.com/weiyinerzui/audio-transcribe
@@ -88,10 +88,17 @@ pip install -r <skill-dir>/requirements.txt
 不会把文稿发往任何第三方主机。
 
 - **有时间戳**（bcut/jianying）：分批编号逐行清理，**完整保留 SRT 时间轴**，纯语气词行被丢弃后序号自动重排
-- **无时间戳**（siliconflow）：整篇润色
+- **无时间戳**（siliconflow）：按段落分块整篇润色
 - `--clean rules`：本地正则清理，免费不联网，同样保留时间轴
 - `--clean none`：不清理，输出原始识别结果
 - 清理网关不可达或未配置时**自动降级为 rules**并打印警告，不会让整次转录失败
+
+长音频的稳定性（实测 1 小时 / 2.9 万字无降级）：
+
+- **流式请求**：超时判定的是「相邻数据块间隔」（默认 120s），不是整段生成总时长
+- **小分块**：默认 1200 字/块，在段落/句子边界切；`NINEROUTER_CLEAN_CHUNK` 可调
+- **分块级容错**：单块失败只保留该块原文，其他块照常；全部失败才降级 `rules`
+- **预算递增**：输出为空或被截断时自动加大 `max_tokens` 重试
 
 ## 常用命令
 
