@@ -72,35 +72,16 @@ FULLTEXT_PROMPT = (
 
 # ---------------------------------------------------------------- 网关配置
 
-_PROVIDER_NAME = os.environ.get("NINEROUTER_PROVIDER", "9router")
-
-def _provider_config() -> dict:
-    """从 agent 配置文件读网关信息（可选，仅 pi 用户存在）。
-
-    非 pi 环境下文件不存在，直接返回空，不影响其他 agent 使用；
-    优先走 NINEROUTER_BASE_URL / NINEROUTER_MODEL / NINEROUTER_API_KEY 环境变量。
-    """
-    try:
-        cfg = json.load(open(os.path.expanduser("~/.pi/agent/models.json"), encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
-    for section in (cfg, cfg.get("providers") or {}):
-        if isinstance(section, dict):
-            entry = section.get(_PROVIDER_NAME)
-            if isinstance(entry, dict) and (entry.get("apiKey") or entry.get("baseUrl")):
-                return entry
-    return {}
+# 清理网关只通过环境变量 / 命令行参数配置，不读任何 agent 专属配置文件，
+# 以保证这个 skill 对任意 agent、任意 OpenAI 兼容服务的行为一致。
 
 def _router_api_key(api_key: str | None = None) -> str:
     if api_key:
         return api_key.strip()
-    for name in ("NINEROUTER_API_KEY", "ROUTER_API_KEY"):
+    for name in ("NINEROUTER_API_KEY", "OPENAI_API_KEY"):
         key = os.environ.get(name, "").strip()
         if key:
             return key
-    key = str(_provider_config().get("apiKey") or "").strip()
-    if key:
-        return key
     raise RuntimeError(
         "未找到清理模型 API key：请设置 NINEROUTER_API_KEY（配合 NINEROUTER_BASE_URL / "
         "NINEROUTER_MODEL），或用 --clean rules 走免费本地规则清理"
@@ -109,8 +90,7 @@ def _router_api_key(api_key: str | None = None) -> str:
 def _resolve_gateway(api_key: str | None, model: str | None, base_url: str | None) -> tuple[str, str, str]:
     """解析清理网关三要素。base_url/model 未配置时归一为一异常，由上层降级为 rules。"""
     key = _router_api_key(api_key)
-    cfg = _provider_config()
-    resolved_base = (base_url or ROUTER_BASE or cfg.get("baseUrl") or "").strip()
+    resolved_base = (base_url or ROUTER_BASE or "").strip()
     resolved_model = (model or ROUTER_MODEL or "").strip()
     if not resolved_base or not resolved_model:
         raise RuntimeError(

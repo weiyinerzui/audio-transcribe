@@ -584,6 +584,7 @@ python3 transcribe.py talk.mp4 --engine siliconflow -o 文稿.txt</pre></div>
 <div class="info">
 <span class="h">变量名为什么叫 NINEROUTER</span>
 <p>历史原因。它的语义就是「清理用的 LLM 网关」，<strong>跟具体服务商无关</strong>。填 DeepSeek、OpenAI、Ollama 都可以。</p>
+<p>如果不想用这个变量名，也可以只设 <code>OPENAI_API_KEY</code>，它会作为兜底被读取。</p>
 </div>
 
 <h3>8.3 让变量永久生效</h3>
@@ -624,7 +625,8 @@ source ~/.bashrc</pre></div>
 <div class="warn">
 <span class="h">环境变量必须在 agent 进程里生效</span>
 <p>如果你在 CC / Codex 里用这个 skill，而你只在普通终端 export 过，<strong>agent 可能读不到</strong>——它有自己的环境。</p>
-<p>解决办法：把变量写进 <code>~/.zshrc</code> / <code>~/.bashrc</code> 后<strong>重启 agent</strong>；或者写进 agent 自己的配置里。</p>
+<p>解决办法：把变量写进 <code>~/.zshrc</code> / <code>~/.bashrc</code>，然后<strong>重启 agent</strong>（它继承 shell 环境）。</p>
+<p>注意：本工具<strong>只读环境变量和命令行参数</strong>，不会去读 agent 的配置文件。所以写进 agent 配置文件里是无效的，必须让变量出现在 agent 进程的环境里。</p>
 <p>读不到时不会报错，只会静默降级成 <code>rules</code>。</p>
 </div>
 
@@ -739,6 +741,7 @@ python3 transcribe.py <span class="s">"https://www.xiaohongshu.com/explore/xxxx"
 <tr><td><code>NINEROUTER_BASE_URL</code></td><td>清理网关地址</td><td>想用 LLM 清理时</td></tr>
 <tr><td><code>NINEROUTER_MODEL</code></td><td>清理模型名</td><td>想用 LLM 清理时</td></tr>
 <tr><td><code>NINEROUTER_API_KEY</code></td><td>清理网关密钥</td><td>想用 LLM 清理时</td></tr>
+<tr><td><code>OPENAI_API_KEY</code></td><td>同上，未设 NINEROUTER_API_KEY 时的兜底</td><td>可选</td></tr>
 <tr><td><code>XHS_COOKIE</code></td><td>小红书 Cookie</td><td>小红书链接</td></tr>
 <tr><td><code>DOUYIN_COOKIE</code></td><td>抖音 Cookie</td><td>抖音链接建议</td></tr>
 <tr><td><code>KUAISHOU_COOKIE</code></td><td>快手 Cookie</td><td>快手链接</td></tr>

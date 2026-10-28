@@ -65,8 +65,12 @@ export NINEROUTER_API_KEY="sk-xxxxxxxx"
 | `NINEROUTER_BASE_URL` | 清理网关 base URL | 想用 LLM 清理时必填 |
 | `NINEROUTER_MODEL` | 清理模型名 | 想用 LLM 清理时必填 |
 | `NINEROUTER_API_KEY` | 清理网关密钥 | 想用 LLM 清理时必填 |
+| `OPENAI_API_KEY` | 同上，`NINEROUTER_API_KEY` 未设时的兜底 | 可选 |
 | `XHS_COOKIE` | 小红书登录 Cookie | 小红书链接 |
 | `DOUYIN_COOKIE` | 抖音登录 Cookie | 抖音链接建议 |
 | `KUAISHOU_COOKIE` | 快手登录 Cookie | 快手链接 |
 
 `bcut` 与 `jianying` 完全免费，不需要任何 key。不想联网就用 `--clean rules`。
+
+网关配置**只读环境变量和命令行参数**，不读取任何 agent 专属配置文件，
+因此在任何 agent、任何 OpenAI 兼容服务下行为一致。
