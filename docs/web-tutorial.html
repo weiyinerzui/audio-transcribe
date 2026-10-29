@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>audio-transcribe Web 版 · 保姆级安装使用教程</title>
+<style>
+:root{
+  --bg:#0b0e14; --panel:#11161f; --panel2:#161c27; --line:#232b3a;
+  --fg:#e6edf3; --dim:#8b98a9; --acc:#4f9cf9; --grn:#3fb950; --yel:#d29922;
+  --red:#f85149; --pur:#a371f7; --mono:'JetBrains Mono','SF Mono',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:84px}
+body{
+  margin:0;background:var(--bg);color:var(--fg);line-height:1.78;
+  font:16px/1.78 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{display:flex;max-width:1400px;margin:0 auto}
+/* ---------- 侧栏 ---------- */
+nav{
+  position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;
+  width:272px;flex:0 0 272px;padding:26px 18px 40px;border-right:1px solid var(--line);
+}
+nav::-webkit-scrollbar{width:6px}
+nav::-webkit-scrollbar-thumb{background:#2b3547;border-radius:3px}
+nav .brand{font-weight:800;font-size:16px;letter-spacing:.3px;margin-bottom:4px}
+nav .brand span{color:var(--acc)}
+nav .sub{color:var(--dim);font-size:12px;margin-bottom:18px}
+nav ol{list-style:none;margin:0;padding:0;counter-reset:s}
+nav ol li{counter-increment:s;margin:1px 0}
+nav ol li a{
+  display:block;padding:6px 10px 6px 30px;position:relative;border-radius:7px;
+  color:var(--dim);text-decoration:none;font-size:13.5px;transition:.15s;
+}
+nav ol li a:before{
+  content:counter(s);position:absolute;left:8px;top:6px;font-size:11px;
+  color:#4a5568;font-family:var(--mono);
+}
+nav ol li a:hover{background:var(--panel2);color:var(--fg)}
+nav ol li a.on{background:#1b2433;color:var(--acc);font-weight:600}
+nav ol li a.on:before{color:var(--acc)}
+nav .back{
+  display:block;margin-top:20px;padding:8px 11px;border-radius:7px;font-size:12.5px;
+  color:var(--dim);text-decoration:none;border:1px solid var(--line);text-align:center;
+}
+nav .back:hover{border-color:var(--acc);color:var(--acc)}
+/* ---------- 正文 ---------- */
+main{flex:1;min-width:0;padding:44px 52px 140px;max-width:960px}
+h1{font-size:31px;line-height:1.3;margin:0 0 10px;letter-spacing:-.4px}
+.lede{color:var(--dim);font-size:15.5px;margin:0 0 8px}
+.meta{color:#5d6b7f;font-size:12.5px;font-family:var(--mono);margin-bottom:26px}
+h2{
+  font-size:22px;margin:54px 0 6px;padding-top:18px;letter-spacing:-.2px;
+  border-top:1px solid var(--line);
+}
+h2 .n{
+  display:inline-block;min-width:29px;height:29px;line-height:29px;text-align:center;
+  background:linear-gradient(135deg,#1f6feb,#4f9cf9);color:#fff;border-radius:8px;
+  font-size:14px;font-family:var(--mono);margin-right:11px;vertical-align:2px;
+}
+h3{font-size:16.5px;margin:30px 0 8px;color:#cfe0f5}
+h4{font-size:14.5px;margin:22px 0 6px;color:#b9c8da;font-weight:600}
+p{margin:11px 0}
+ul,ol{margin:11px 0;padding-left:24px}
+li{margin:5px 0}
+a{color:var(--acc)}
+code{
+  font-family:var(--mono);font-size:13.2px;background:#1a2230;color:#a5d6ff;
+  padding:2px 6px;border-radius:5px;border:1px solid #243044;
+}
+strong{color:#fff;font-weight:650}
+em{color:#c9d6e6;font-style:normal;background:#2a2213;padding:1px 5px;border-radius:4px}
+/* ---------- 代码块 ---------- */
+.cb{
+  position:relative;background:#0d1117;border:1px solid var(--line);border-radius:10px;
+  margin:14px 0;overflow:hidden;
+}
+.cb .bar{
+  display:flex;align-items:center;gap:7px;padding:8px 13px;background:#121821;
+  border-bottom:1px solid var(--line);font-size:11.5px;color:#6b7a8d;font-family:var(--mono);
+}
+.cb .bar i{width:9px;height:9px;border-radius:50%;background:#ff5f57;display:inline-block}
+.cb .bar i:nth-child(2){background:#febc2e}
+.cb .bar i:nth-child(3){background:#28c840}
+.cb .bar b{margin-left:7px;font-weight:500;color:#7d8b9e}
+.cb pre{
+  margin:0;padding:15px 17px;overflow-x:auto;font-family:var(--mono);
+  font-size:13.2px;line-height:1.65;white-space:pre-wrap;word-break:break-word;
+}
+.cb pre::-webkit-scrollbar{height:8px}
+.cb pre::-webkit-scrollbar-thumb{background:#2b3547;border-radius:4px}
+.k{color:#7ee787}.s{color:#a5d6ff}.c{color:#6e7681}.v{color:#ffa657}.p{color:#d2a8ff}
+/* ---------- 图片 ---------- */
+figure{margin:16px 0}
+figure img{width:100%;display:block;border-radius:9px;border:1px solid var(--line)}
+figcaption{color:var(--dim);font-size:12.5px;margin-top:7px;text-align:center}
+/* ---------- 提示框 ---------- */
+.box{border-radius:9px;padding:13px 17px;margin:15px 0;border-left:3px solid;font-size:14.5px}
+.box p:first-child{margin-top:0}.box p:last-child{margin-bottom:0}
+.tip{background:#0d1f16;border-color:var(--grn)}
+.tip .h{color:var(--grn);font-weight:700;display:block;margin-bottom:3px;font-size:13px}
+.warn{background:#211a0b;border-color:var(--yel)}
+.warn .h{color:var(--yel);font-weight:700;display:block;margin-bottom:3px;font-size:13px}
+.dan{background:#23100f;border-color:var(--red)}
+.dan .h{color:var(--red);font-weight:700;display:block;margin-bottom:3px;font-size:13px}
+.info{background:#0d1626;border-color:var(--acc)}
+.info .h{color:var(--acc);font-weight:700;display:block;margin-bottom:3px;font-size:13px}
+/* ---------- 表格 ---------- */
+table{width:100%;border-collapse:collapse;margin:15px 0;font-size:14px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#141b25;color:#aab8c9;font-weight:600;font-size:12.5px;letter-spacing:.3px}
+tr:hover td{background:#101620}
+td code{font-size:12.4px}
+/* ---------- 徽标 ---------- */
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0}
+.chip{
+  font-size:12px;padding:3px 10px;border-radius:99px;background:#16202e;
+  border:1px solid #243044;color:#9fb2c8;font-family:var(--mono);
+}
+.chip.g{border-color:#1f4d2b;color:#7ee787;background:#0d1f16}
+.chip.b{border-color:#1f3a5f;color:#79c0ff;background:#0d1626}
+.chip.p{border-color:#432a5c;color:#d2a8ff;background:#180f22}
+/* ---------- 步骤卡 ---------- */
+.step{
+  background:var(--panel);border:1px solid var(--line);border-radius:11px;
+  padding:18px 20px;margin:16px 0;position:relative;
+}
+.step .tag{
+  position:absolute;top:-10px;left:16px;background:var(--acc);color:#fff;
+  font-size:11px;font-family:var(--mono);padding:2px 9px;border-radius:5px;font-weight:700;
+}
+.step h4{margin-top:6px}
+/* ---------- 顶部进度 ---------- */
+#prog{position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,#1f6feb,#4f9cf9);width:0;z-index:99;transition:width .1s}
+@media(max-width:1000px){
+  nav{display:none}
+  main{padding:26px 20px 90px}
+  h1{font-size:25px}
+  h2{font-size:19px}
+  table{display:block;overflow-x:auto;white-space:nowrap}
+  table th,table td{white-space:normal;min-width:90px}
+  .cb pre{font-size:12.2px;padding:12px 13px}
+  figure img{border-radius:7px}
+}
+</style>
+</head>
+<body>
+<div id="prog"></div>
+<div class="wrap">
+<nav>
+  <div class="brand">audio<span>-</span>transcribe</div>
+  <div class="sub">Web 版教程 · v1.3.0</div>
+  <ol>
+    <li><a href="#w0">Web 版是什么</a></li>
+    <li><a href="#w1">装之前检查环境</a></li>
+    <li><a href="#w2">安装（三选一）</a></li>
+    <li><a href="#w3">第一次启动</a></li>
+    <li><a href="#w4">第一次转录</a></li>
+    <li><a href="#w5">看懂进度与日志</a></li>
+    <li><a href="#w6">配置文本服务商</a></li>
+    <li><a href="#w7">文稿工作台</a></li>
+    <li><a href="#w8">总结 · 润色 · 问答</a></li>
+    <li><a href="#w9">转录模型怎么选</a></li>
+    <li><a href="#w10">本地模型下载</a></li>
+    <li><a href="#w11">环境检测与修复</a></li>
+    <li><a href="#w12">网页链接与 Cookie</a></li>
+    <li><a href="#w13">Key 到底存在哪</a></li>
+    <li><a href="#w14">Docker 部署</a></li>
+    <li><a href="#w15">常见问题</a></li>
+    <li><a href="#w16">速通清单</a></li>
+  </ol>
+  <a class="back" href="index.html">← 命令行版教程</a>
+</nav>
+<main>
+
+<h1>audio-transcribe Web 版 · 保姆级安装使用教程</h1>
+<p class="lede">不敲命令，在浏览器里拖文件、贴链接、看进度、改文稿、问 AI。同样一套引擎，同一个 <code>pipeline.py</code>。</p>
+<div class="meta">版本 v1.3.0 &nbsp;·&nbsp; 适用 macOS / Linux / Windows &nbsp;·&nbsp; 约 20 分钟读完，8 分钟跑通</div>
+
+<div class="chips">
+  <span class="chip g">零 API key 可转录</span>
+  <span class="chip g">Key 只存浏览器</span>
+  <span class="chip b">只监听 127.0.0.1</span>
+  <span class="chip b">无需构建步骤</span>
+  <span class="chip p">支持 Docker</span>
+  <span class="chip">MIT</span>
+</div>
+
+<!-- ============ 0 ============ -->
+<h2 id="w0"><span class="n">0</span>Web 版是什么，和命令行版什么关系</h2>
+
+<p>一句话：<strong>同一个工具，两种入口。</strong>命令行版适合脚本自动化，Web 版适合「我要边听边改、边看边找重点」的场景。</p>
+
+<h3>它长这样</h3>
+
+<figure>
+  <img src="img/wt_01_first.png" alt="Web 版首屏">
+  <figcaption>左边导航，右边工作区。深色是默认主题，点左下角可切浅色</figcaption>
+</figure>
+
+<h3>和命令行的差别</h3>
+
+<table>
+<tr><th style="width:22%">场景</th><th style="width:39%">命令行版</th><th>Web 版</th></tr>
+<tr><td>选参数</td><td>背 <code>--engine</code> / <code>--clean</code> / <code>--format</code></td><td>下拉框点选</td></tr>
+<tr><td>看进度</td><td>盯着一行行 stderr</td><td>四阶段进度条 + 可滚动日志</td></tr>
+<tr><td>改错字</td><td>用编辑器打开文件改</td><td>边听边点时间戳跳转，就地改</td></tr>
+<tr><td>找重点</td><td>通读全文</td><td>生成总结 / 对着文稿提问</td></tr>
+<tr><td>校对效果</td><td>重跑一遍对比</td><td>润色结果并列显示，不覆盖原文</td></tr>
+<tr><td>环境问题</td><td>自己看报错、自己 pip</td><td>一键检测 + 一键修复</td></tr>
+<tr><td>批量处理</td><td>写 shell 循环</td><td>一次拖多个文件</td></tr>
+<tr><td>自动化</td><td><strong>强</strong>：可塞进任何 pipeline</td><td>只能用 HTTP API</td></tr>
+</table>
+
+<div class="info">
+<span class="h">两者不冲突，可以都装</span>
+<p>Web 版<strong>没有重写</strong>转录逻辑。它调用的是和命令行完全相同的 <code>pipeline.py</code>，连引擎实现都是同一份文件。所以你在命令行验证过的行为，在 Web 里一模一样。</p>
+</div>
+
+<h3>它不做的事</h3>
+
+<ul>
+  <li><strong>没有登录鉴权</strong>。设计前提是「只给自己用」，默认只听 <code>127.0.0.1</code>，别的机器连不上</li>
+  <li><strong>不保存你的 API Key</strong>。Key 只在你浏览器里，服务端用完即弃</li>
+  <li><strong>不帮你绕过平台限制</strong>。要 Cookie 的平台还是得自己配，跟命令行版一样</li>
+</ul>
+
+<!-- ============ 1 ============ -->
+<h2 id="w1"><span class="n">1</span>装之前，先检查环境</h2>
+
+<p>硬性前提两个：<strong>Python 3.10+</strong> 和 <strong>ffmpeg</strong>。前者用 venv 装着更省心，后者必须系统安装。</p>
+
+<h3>1.1 检查 Python</h3>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre><span class="c"># 看版本，需要 3.10 或更高</span>
+python3 --version
+
+<span class="c"># 输出示例</span>
+<span class="s">Python 3.13.5</span></pre></div>
+
+<div class="warn">
+<span class="h">Windows 用户：命令里的 python3 换成 python</span>
+<p>如果 <code>python3 --version</code> 提示找不到命令，改用 <code>python --version</code> 或 <code>py --version</code>。本教程后面所有命令同理。</p>
+</div>
+
+<p>版本不够或没有 Python：</p>
+
+<table>
+<tr><th style="width:24%">系统</th><th>安装命令</th></tr>
+<tr><td>macOS</td><td><code>brew install python@3.12</code></td></tr>
+<tr><td>Ubuntu / Debian</td><td><code>sudo apt update &amp;&amp; sudo apt install python3.12 python3-venv python3-pip</code></td></tr>
+<tr><td>Arch</td><td><code>sudo pacman -S python python-pip</code></td></tr>
+<tr><td>Windows</td><td>官网下载 <a href="https://www.python.org/downloads/">python.org</a>，安装时<strong>务必勾选 Add python.exe to PATH</strong></td></tr>
+</table>
+
+<h3>1.2 检查 ffmpeg</h3>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>ffmpeg -version
+
+<span class="c"># 期望看到类似</span>
+<span class="s">ffmpeg version 7.1.5 Copyright (c) 2000-2026 the FFmpeg developers</span></pre></div>
+
+<p>没有的话按平台装：</p>
+
+<table>
+<tr><th style="width:24%">系统</th><th>安装命令</th></tr>
+<tr><td>macOS</td><td><code>brew install ffmpeg</code></td></tr>
+<tr><td>Ubuntu / Debian</td><td><code>sudo apt install ffmpeg</code></td></tr>
+<tr><td>Arch</td><td><code>sudo pacman -S ffmpeg</code></td></tr>
+<tr><td>Windows</td><td><code>winget install Gyan.FFmpeg</code></td></tr>
+</table>
+
+<div class="tip">
+<span class="h">不装也行，Web 里能一键下</span>
+<p>就算系统没有 ffmpeg，启动后进「环境检测」页点修复，工具会下载一份<strong>静态二进制</strong>到 <code>~/.audio-transcribe/bin/</code>，<strong>不需要 root 权限</strong>。这条路径在没法 sudo 的机器上特别有用。</p>
+</div>
+
+<h3>1.3 检查 git（可选）</h3>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>git --version</pre></div>
+
+<p>没有 git 也能装：直接在 GitHub 页面点 <strong>Code → Download ZIP</strong>，解压即可。</p>
+
+<h3>1.4 磁盘空间</h3>
+
+<p>不用本地模型的话，<strong>500 MB 绰绰有余</strong>。要下本地 whisper 模型的话，每个 1–3 GB，建议留 5 GB 以上。</p>
+
+<!-- ============ 2 ============ -->
+<h2 id="w2"><span class="n">2</span>安装：三种方式，选一种</h2>
+
+<div class="step">
+<div class="tag">方式 A</div>
+<h4>复制粘贴三条命令（推荐）</h4>
+<p>最简单，不需要懂 Python 环境管理。</p>
+</div>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre><span class="c"># 1. 拿到代码</span>
+git clone https://github.com/weiyinerzui/audio-transcribe.git
+<span class="k">cd</span> audio-transcribe
+
+<span class="c"># 2. 建一个独立环境（避免污染系统 Python）</span>
+python3 -m venv .venv
+
+<span class="c"># 3. 装依赖</span>
+<span class="c">#    macOS / Linux：</span>
+<span class="k">source</span> .venv/bin/activate
+<span class="c">#    Windows PowerShell：</span>
+<span class="c">#    .venv\Scripts\Activate.ps1</span>
+
+pip install -r requirements-web.txt</pre></div>
+
+<div class="warn">
+<span class="h">为什么要用 venv</span>
+<p>新版 Debian / Ubuntu / Fedora 的系统 Python 有 <strong>PEP 668 保护</strong>，直接 <code>pip install</code> 会报 <code>error: externally-managed-environment</code>。用 venv 是最干净的解法——不用 <code>--break-system-packages</code>，也不用 sudo。</p>
+<p>看到 <code>(.venv)</code> 出现在提示符前面，说明环境已激活。之后每次要用 Web 版，都要先 <code>source .venv/bin/activate</code>。</p>
+</div>
+
+<div class="step">
+<div class="tag">方式 B</div>
+<h4>Docker（不想碰 Python 环境）</h4>
+<p>机器上有 Docker 就行，一条命令跑起来。</p>
+</div>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>git clone https://github.com/weiyinerzui/audio-transcribe.git
+<span class="k">cd</span> audio-transcribe
+
+docker build -t audio-transcribe .
+docker run --rm -p <span class="v">127.0.0.1</span>:8787:8787 -v at-data:/data audio-transcribe</pre></div>
+
+<div class="dan">
+<span class="h">-p 左边必须是 127.0.0.1</span>
+<p>写成 <code>-p 8787:8787</code> 会把端口暴露到<strong>整个局域网</strong>，而这工具没有鉴权。正确写法是 <code>-p 127.0.0.1:8787:8787</code>。详见 <a href="#w14">第 14 节</a>。</p>
+</div>
+
+<div class="step">
+<div class="tag">方式 C</div>
+<h4>让 agent 帮你装</h4>
+<p>你已经在用 Claude Code / Codex / OpenCode / pi 的话，把下面这段丢给它。</p>
+</div>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>给 agent 的 Prompt</b></div><pre>请帮我安装并启动 audio-transcribe 的 Web 版：
+
+1. clone https://github.com/weiyinerzui/audio-transcribe.git 到合适目录
+2. 用 python3 -m venv .venv 建虚拟环境并激活
+3. 执行 pip install -r requirements-web.txt
+4. 检查系统是否装了 ffmpeg（ffmpeg -version）；没有的话先
+   告诉我，不要擅自 sudo 安装
+5. 启动：python web/server.py --no-browser
+6. 用 curl http://127.0.0.1:8787/api/health 验证返回 {"ok":true}
+7. 把访问地址和任何报错原文告诉我
+
+注意：所有命令都要在虚拟环境内执行；不要修改系统 Python；
+不要执行 sudo；遇到权限问题停下来问我。</pre></div>
+
+<!-- ============ 3 ============ -->
+<h2 id="w3"><span class="n">3</span>第一次启动</h2>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>python web/server.py</pre></div>
+
+<p>正常的话你会看到：</p>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>输出</b></div><pre><span class="c"># 浏览器会自动打开 http://127.0.0.1:8787</span>
+<span class="s">INFO:     Started server process [12345]</span>
+<span class="s">INFO:     Uvicorn running on http://127.0.0.1:8787 (Press CTRL+C to quit)</span></pre></div>
+
+<div class="tip">
+<span class="h">服务开着才能用</span>
+<p>这个终端窗口<strong>不能关</strong>。关掉服务就停了。想后台常驻可以用 <code>nohup python web/server.py --no-browser &amp;</code>，或者做成 systemd / launchd 服务。</p>
+</div>
+
+<h3>3.1 常用参数</h3>
+
+<table>
+<tr><th style="width:34%">参数</th><th>作用</th></tr>
+<tr><td><code>--port 9000</code></td><td>换端口（默认 8787）</td></tr>
+<tr><td><code>--concurrency 2</code></td><td>同时处理 2 个任务（默认 1）</td></tr>
+<tr><td><code>--no-browser</code></td><td>不自动打开浏览器</td></tr>
+<tr><td><code>--host 0.0.0.0</code></td><td><strong>⚠ 对外开放</strong>，见第 14 节</td></tr>
+</table>
+
+<h3>3.2 验证服务活着</h3>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端（另开一个窗口）</b></div><pre>curl http://127.0.0.1:8787/api/health
+
+<span class="c"># 期望输出</span>
+<span class="s">{"ok":true,"queued":0}</span></pre></div>
+
+<h3>3.3 启动报错怎么办</h3>
+
+<p><strong>报 <code>ModuleNotFoundError: No module named 'fastapi'</code></strong></p>
+<p>依赖没装，或者虚拟环境没激活。确认提示符前有 <code>(.venv)</code>，然后：</p>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre><span class="k">source</span> .venv/bin/activate      <span class="c"># Windows: .venv\Scripts\Activate.ps1</span>
+pip install -r requirements-web.txt</pre></div>
+
+<p><strong>报 <code>Address already in use</code></strong></p>
+<p>8787 被占了。换端口：<code>python web/server.py --port 9000</code>。</p>
+
+<p><strong>浏览器没自动打开</strong></p>
+<p>手动访问 <code>http://127.0.0.1:8787</code>。有些无桌面环境或远程服务器上打不开是正常的。</p>
+
+<p><strong>远程服务器上跑，本地浏览器打不开</strong></p>
+<p>用 SSH 端口转发（<strong>不要</strong>改成 <code>--host 0.0.0.0</code>）：</p>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>本地终端</b></div><pre>ssh -N -L 8787:127.0.0.1:8787 用户名@服务器地址
+
+<span class="c"># 然后本地浏览器打开 http://127.0.0.1:8787</span></pre></div>
+
+<!-- ============ 4 ============ -->
+<h2 id="w4"><span class="n">4</span>第一次转录</h2>
+
+<p>目标：把一个音频文件变成 SRT 字幕。全程点鼠标，不敲命令。</p>
+
+<h3>4.1 选文件</h3>
+
+<p>在「新建转录」页，<strong>点击虚线框</strong>或直接把文件<strong>拖进去</strong>。支持：
+
+<span class="chips">
+  <span class="chip">mp4</span><span class="chip">mkv</span><span class="chip">mov</span>
+  <span class="chip">avi</span><span class="chip">webm</span><span class="chip">flv</span>
+  <span class="chip">mp3</span><span class="chip">m4a</span><span class="chip">wav</span>
+  <span class="chip">flac</span><span class="chip">aac</span><span class="chip">ogg</span>
+</span>
+
+一次可以选<strong>多个</strong>，会排队逐个处理。单文件上限 2 GB。</p>
+
+<figure>
+  <img src="img/wt_02_file.png" alt="选择文件后">
+  <figcaption>选好后会显示文件名和大小，下方按钮提示「将转录 1 个文件」</figcaption>
+</figure>
+
+<h3>4.2 选引擎</h3>
+
+<p>默认是 <strong>B站必剪（bcut）</strong>，免费、免登录、中文准、有毫秒级时间戳。<strong>第一次用别改，直接跑。</strong></p>
+
+<p>其他引擎什么时候用，见 <a href="#w9">第 9 节</a>。</p>
+
+<h3>4.3 选格式和清理</h3>
+
+<table>
+<tr><th style="width:28%">输出格式</th><th>什么时候选</th></tr>
+<tr><td><strong>SRT 字幕</strong></td><td>要导入播放器、剪辑软件，或需要按时间定位</td></tr>
+<tr><td><strong>TXT 文稿</strong></td><td>只要阅读，不需要时间轴</td></tr>
+<tr><td><strong>JSON 数据</strong></td><td>要自己写程序处理分段和时间戳</td></tr>
+</table>
+
+<table>
+<tr><th style="width:28%">文稿清理</th><th>什么时候选</th></tr>
+<tr><td><strong>LLM 润色</strong></td><td>效果最好，但需要先在「服务商设置」配好文本模型</td></tr>
+<tr><td><strong>本地规则</strong></td><td>免费、离线、瞬间完成。能删语气词、折叠重复、修常见错字</td></tr>
+<tr><td><strong>不清理</strong></td><td>要原始识别结果，自己后处理</td></tr>
+</table>
+
+<div class="warn">
+<span class="h">没配 LLM 会怎样</span>
+<p>选了「LLM 润色」但没配服务商，界面会提示「清理会自动降级为本地规则」，实际执行时也自动降级。 <strong>转录结果不会丢</strong>，只是少了 LLM 那层润色。这是刻意的容错设计。</p>
+</div>
+
+<h3>4.4 开始</h3>
+
+<p>点蓝色的「开始转录」。下方会展开进度卡片，四阶段依次点亮：</p>
+
+<figure>
+  <img src="img/wt_08_progress.png" alt="转录进行中">
+  <figcaption>进度条 + 实时日志。第二阶段「转录」最耗时，取决于音频长度和引擎</figcaption>
+</figure>
+
+<p>完成后：</p>
+
+<figure>
+  <img src="img/wt_09_done.png" alt="转录完成">
+  <figcaption>四步全绿，出现「查看结果」按钮</figcaption>
+</figure>
+
+<div class="tip">
+<span class="h">点「查看结果」直接进文稿工作台</span>
+<p>不用再去历史列表找。工作台里能听、能改、能导出、能问 AI。</p>
+</div>
+
+<!-- ============ 5 ============ -->
+<h2 id="w5"><span class="n">5</span>看懂进度与日志</h2>
+
+<h3>5.1 四个阶段</h3>
+
+<table>
+<tr><th style="width:8%">#</th><th style="width:22%">阶段</th><th>在做什么</th><th style="width:20%">耗时</th></tr>
+<tr><td>1</td><td>获取音频</td><td>ffmpeg 抽音轨 / 链接下载</td><td>本地文件几秒；链接看网速</td></tr>
+<tr><td>2</td><td>转录</td><td>调云端或本地引擎识别</td><td><strong>最久</strong>，1 小时音频约 1–5 分钟</td></tr>
+<tr><td>3</td><td>清理文稿</td><td>LLM 逐段润色 / 本地正则</td><td>规则模式瞬间；LLM 模式按块走</td></tr>
+<tr><td>4</td><td>导出</td><td>写文件</td><td>不到 1 秒</td></tr>
+</table>
+
+<h3>5.2 日志怎么读</h3>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>界面日志示例</b></div><pre>任务已排队
+开始处理
+[1/3] 准备音频: /home/you/.audio-transcribe/uploads/3a8c12b3431c.mp3
+[2/3] 转录中 (engine=bcut) …
+[3/3] 清理文稿 (mode=rules) …
+正在写出结果…
+完成：/home/you/.audio-transcribe/outputs/3a8c12b3431c.srt</pre></div>
+
+<p>用 LLM 清理时，第三阶段会持续报进度：<code>清理第 3/25 块</code>。这是分块粒度，不是卡住。</p>
+
+<h3>5.3 随时可以取消</h3>
+
+<p>点「取消任务」。取消是<strong>协作式</strong>的——在分块边界检查，不会硬杀进程，所以已产出的东西不会变成半截坏文件。</p>
+
+<!-- ============ 6 ============ -->
+<h2 id="w6"><span class="n">6</span>配置文本服务商（润色 / 总结 / 问答要用）</h2>
+
+<p>不配也能用——只是这三项 AI 功能不可用，转录本身完全不受影响。</p>
+
+<h3>6.1 打开设置页</h3>
+
+<p>左侧「服务商设置」。第一次进来是空的，给了四个预设：</p>
+
+<figure>
+  <img src="img/wt_04_settings_empty.png" alt="服务商设置为空">
+  <figcaption>点任意一个预设卡片即可快速添加</figcaption>
+</figure>
+
+<table>
+<tr><th style="width:20%">预设</th><th style="width:34%">Base URL</th><th>适合谁</th></tr>
+<tr><td><strong>DeepSeek</strong></td><td><code>https://api.deepseek.com/v1</code></td><td>中文强、便宜，性价比最高，<strong>推荐</strong></td></tr>
+<tr><td>硅基流动</td><td><code>https://api.siliconflow.cn/v1</code></td><td>国内直连，有免费额度</td></tr>
+<tr><td>OpenAI</td><td><code>https://api.openai.com/v1</code></td><td>需能访问 OpenAI</td></tr>
+<tr><td>本地 Ollama</td><td><code>http://127.0.0.1:11434/v1</code></td><td>完全离线，key 随便填</td></tr>
+</table>
+
+<h3>6.2 填 Key 并测试</h3>
+
+<p>点预设 → 在 API Key 框里粘上你的 key → 点「测试」。</p>
+
+<figure>
+  <img src="img/wt_05_settings_filled.png" alt="填好服务商">
+  <figcaption>测试会真的发一次请求。看到绿色「连接正常」才算成功</figcaption>
+</figure>
+
+<div class="tip">
+<span class="h">「测试」按钮是干什么的</span>
+<p>它向 <code>/chat/completions</code> 发一条 <code>回复 OK</code> 的短消息。<strong>失败会显示真实 HTTP 状态码和响应体</strong>，比如 401 就说明 key 填错了，404 多半是 Base URL 少了 <code>/v1</code>。别猜，直接看它说什么。</p>
+</div>
+
+<h3>6.3 自己加服务商</h3>
+
+<p>任何 OpenAI 兼容的服务都能加：在底部「添加自定义服务商」填名称、Base URL、Key、模型名即可。</p>
+
+<h3>6.4 多个服务商怎么切</h3>
+
+<p>第一个添加的自动成为「默认」。其他的显示「备用」，点「设为默认」切换。润色、总结、问答都用当前默认的那个。</p>
+
+<!-- ============ 7 ============ -->
+<h2 id="w7"><span class="n">7</span>文稿工作台：听、改、导</h2>
+
+<p>从历史列表点「查看」，或转录完成后点「查看结果」，进入工作台。</p>
+
+<figure>
+  <img src="img/wt_10_history.png" alt="转录历史">
+  <figcaption>每次转录都在历史里：状态、引擎、格式、耗时。可取消、可删除</figcaption>
+</figure>
+
+<figure>
+  <img src="img/wt_11_workspace.png" alt="文稿工作台">
+  <figcaption>顶部播放器，下方逐句文稿。点时间戳跳转，直接改字</figcaption>
+</figure>
+
+<h3>7.1 播放器与高亮</h3>
+
+<ul>
+  <li>点<strong>任意时间戳</strong>，播放器跳到那一句</li>
+  <li>播放时<strong>当前句自动高亮</strong>，跟着音频走</li>
+  <li>适合校对：听一句、看一眼、改一处</li>
+</ul>
+
+<div class="warn">
+<span class="h">链接类任务没有播放器</span>
+<p>从网页链接转录的任务，原始媒体在转录后就清理了，所以播放器不可用，界面会明确提示。文字稿和编辑功能不受影响。要边听边改的话，用<strong>本地文件</strong>转录。</p>
+</div>
+
+<h3>7.2 在线编辑</h3>
+
+<p>直接点任意一句话就能改。改完点右上角「<strong>保存修改</strong>」写回文件。</p>
+
+<div class="tip">
+<span class="h">编辑不会破坏时间轴</span>
+<p>只改文字，时间戳原样保留。所以你可以放心大改，SRT 依然是合法的。</p>
+</div>
+
+<h3>7.3 导出</h3>
+
+<p>右上角两个按钮：</p>
+<ul>
+  <li><strong>下载 SRT</strong> —— 带时间戳的字幕</li>
+  <li><strong>下载 TXT</strong> —— 纯文字稿</li>
+</ul>
+<p>编辑后导出的是<strong>改过的版本</strong>，不是原始转录。</p>
+
+<!-- ============ 8 ============ -->
+<h2 id="w8"><span class="n">8</span>总结 · 润色 · 问答</h2>
+
+<p>工作台顶部四个标签页：<strong>文稿 / 总结 / 润色 / 问答</strong>。后三个需要先配好文本服务商。</p>
+
+<h3>8.1 总结</h3>
+
+<p>点「生成总结」，输出结构化内容：一句话概括 → 核心要点（带时间戳）→ 值得记录的原话 → 行动项（如果原文涉及）。</p>
+
+<div class="info">
+<span class="h">长文稿怎么处理</span>
+<p>超过 1.2 万字的文稿不会硬塞。系统先按段落分块摘要压缩，再基于摘要生成总结。所以 3 小时的访谈也能出总结，不会因为超上下文而失败。</p>
+</div>
+
+<h3>8.2 润色（三档）</h3>
+
+<table>
+<tr><th style="width:22%">强度</th><th>做什么</th></tr>
+<tr><td><strong>轻度</strong></td><td>只删语气词（嗯、啊、那个、就是）和口吃重复，其余一字不改</td></tr>
+<tr><td><strong>中度</strong></td><td>删语气词 + 修明显同音错字和语病，保持口语风格</td></tr>
+<tr><td><strong>重度</strong></td><td>整理为通顺书面表达，合并碎片句，可调语序，<strong>但不增删事实</strong></td></tr>
+</table>
+
+<div class="tip">
+<span class="h">润色结果不覆盖原文</span>
+<p>结果并列显示在下方，带「复制」按钮。想用就复制走，不想用原文还在。这样你可以放心试重度，不满意再试轻度。</p>
+</div>
+
+<h3>8.3 问答</h3>
+
+<p>就这份文稿提问，回答里的 <code>[00:12:34]</code> 是<strong>可点的</strong>，点了播放器跳过去。</p>
+
+<figure>
+  <img src="img/wt_12_chat.png" alt="文稿问答">
+  <figcaption>回答带时间戳引用，点击直达对应音频位置</figcaption>
+</figure>
+
+<p>怎么做到长文稿也能问：</p>
+
+<table>
+<tr><th style="width:26%">文稿长度</th><th>策略</th></tr>
+<tr><td>≤ 8,000 字</td><td>全文直接送给模型</td></tr>
+<tr><td>8,000 – 50,000 字</td><td><strong>BM25 检索</strong>出最相关的 30 段再送</td></tr>
+<tr><td>&gt; 50,000 字</td><td>先逐段摘要压缩，再基于摘要回答</td></tr>
+</table>
+
+<div class="info">
+<span class="h">为什么用 BM25 而不是向量检索</span>
+<p>BM25 是经典的关键词相关性算法，纯 Python 约 40 行就能实现。<strong>不需要向量数据库，不需要 embedding 的 API key，零额外依赖</strong>。对「找原文里讲过什么」这类任务，效果足够好，且完全离线可算。</p>
+</div>
+
+<h3>8.4 快捷键</h3>
+
+<p>问答输入框里 <kbd>Ctrl</kbd>+<kbd>Enter</kbd>（macOS 是 <kbd>⌘</kbd>+<kbd>Enter</kbd>）发送。</p>
+
+<!-- ============ 9 ============ -->
+<h2 id="w9"><span class="n">9</span>转录模型怎么选</h2>
+
+<p>界面里六个引擎，选的时候看三个维度：要不要 key、有没有时间戳、跑在云上还是本地。</p>
+
+<table>
+<tr><th style="width:22%">引擎</th><th style="width:12%">要 key</th><th style="width:12%">时间戳</th><th>说明</th></tr>
+<tr><td><strong>B站必剪</strong></td><td>不要</td><td>✅</td><td><strong>默认首选</strong>。免费、免登录、中文准、毫秒级时间戳</td></tr>
+<tr><td>剪映</td><td>不要</td><td>✅</td><td>免费，但依赖第三方签名服务，可能随时失效</td></tr>
+<tr><td>硅基流动</td><td>要</td><td>❌</td><td>Qwen3-ASR，只返回整段文本。选它时 SRT 会被自动禁用</td></tr>
+<tr><td>OpenAI Whisper 兼容</td><td>要</td><td>✅</td><td>任意兼容 <code>/audio/transcriptions</code> 的服务：OpenAI、Groq、硅基流动、自建</td></tr>
+<tr><td>faster-whisper</td><td>不要</td><td>✅</td><td>本地推理，跨平台。有 GPU 自动用 CUDA</td></tr>
+<tr><td>MLX Whisper</td><td>不要</td><td>✅</td><td>本地推理，<strong>仅 Apple Silicon</strong></td></tr>
+</table>
+
+<h3>9.1 界面会主动拦住你</h3>
+
+<p>两处防呆设计：</p>
+
+<ul>
+  <li>选<strong>硅基流动</strong>时，输出格式里的「SRT 字幕」会变灰不可选，并自动切到 TXT —— 因为它没时间戳，出 SRT 就是坏字幕</li>
+  <li>在非 Mac 机器上，<strong>MLX Whisper</strong> 直接显示为禁用，并在引擎说明里写明「仅支持 darwin，当前是 linux」—— <strong>不是隐藏，而是明确告诉你为什么不能用</strong></li>
+</ul>
+
+<div class="tip">
+<span class="h">为什么 MLX 不干脆隐藏</span>
+<p>藏起来的话，Mac 用户会以为这功能不存在；Linux 用户看到别人的截图会疑惑「我为什么没有」。显示出来 + 写明原因，两边都不困惑。</p>
+</div>
+
+<h3>9.2 决策建议</h3>
+
+<table>
+<tr><th style="width:32%">你的情况</th><th>选这个</th></tr>
+<tr><td>第一次用，想快点跑通</td><td><strong>B站必剪</strong></td></tr>
+<tr><td>必剪挂了</td><td>剪映 → 还不行就 OpenAI Whisper 兼容</td></tr>
+<tr><td>只要文字，不要时间轴</td><td>硅基流动（通常更快更便宜）</td></tr>
+<tr><td>有 Groq key</td><td>OpenAI Whisper 兼容 + <code>whisper-large-v3-turbo</code>，速度极快</td></tr>
+<tr><td>敏感内容不能上传云端</td><td>faster-whisper 本地跑</td></tr>
+<tr><td>M 系列 Mac，想最快</td><td>MLX Whisper</td></tr>
+</table>
+
+<h3>9.3 OpenAI Whisper 兼容引擎怎么填</h3>
+
+<p>选它之后会展开「ASR 服务配置」卡片，填三项：</p>
+
+<table>
+<tr><th style="width:20%">字段</th><th style="width:36%">OpenAI 官方</th><th>Groq</th></tr>
+<tr><td>Base URL</td><td><code>https://api.openai.com/v1</code></td><td><code>https://api.groq.com/openai/v1</code></td></tr>
+<tr><td>API Key</td><td><code>sk-...</code></td><td><code>gsk_...</code></td></tr>
+<tr><td>模型名</td><td><code>whisper-1</code></td><td><code>whisper-large-v3-turbo</code></td></tr>
+</table>
+
+<div class="warn">
+<span class="h">这些字段不保存</span>
+<p>ASR 服务配置是<strong>一次性</strong>的，刷新页面就没了。要反复用同一个服务，建议在环境变量里配好（<code>OPENAI_ASR_BASE_URL</code> / <code>OPENAI_ASR_API_KEY</code> / <code>OPENAI_ASR_MODEL</code>），启动服务时读进去。</p>
+</div>
+
+<!-- ============ 10 ============ -->
+<h2 id="w10"><span class="n">10</span>本地模型下载</h2>
+
+<p>想让转录完全离线、不上传任何音频到云端，就用本地引擎。先下模型。</p>
+
+<figure>
+  <img src="img/wt_07_models.png" alt="本地模型管理">
+  <figcaption>平台不适用的模型直接标灰并写明原因，不会让你点了才发现跑不了</figcaption>
+</figure>
+
+<h3>10.1 五个可选模型</h3>
+
+<table>
+<tr><th style="width:34%">模型</th><th style="width:12%">大小</th><th style="width:22%">平台</th><th>适合</th></tr>
+<tr><td>whisper large-v3-turbo (faster-whisper)</td><td>1.6 GB</td><td>全平台</td><td><strong>推荐</strong>，速度与质量平衡最好</td></tr>
+<tr><td>whisper large-v3 (faster-whisper)</td><td>3.0 GB</td><td>全平台</td><td>要最高质量，慢一些</td></tr>
+<tr><td>whisper medium (faster-whisper)</td><td>1.5 GB</td><td>全平台</td><td>机器弱、要省资源</td></tr>
+<tr><td>whisper large-v3-turbo (MLX)</td><td>1.6 GB</td><td>仅 Apple Silicon</td><td>M 系列 Mac，比 faster-whisper 快 2–4 倍</td></tr>
+<tr><td>Qwen3-ASR 0.6B (MLX)</td><td>340 MB</td><td>仅 Apple Silicon</td><td>中文，体积小，Mac 上轻量选择</td></tr>
+</table>
+
+<h3>10.2 下载源</h3>
+
+<p>默认走 <code>hf-mirror.com</code>（HuggingFace 国内镜像，可直连）。想换的话在页面顶部改。下载慢就换镜像，别干等。</p>
+
+<h3>10.3 下完之后</h3>
+
+<ol>
+  <li>模型存在 <code>~/.audio-transcribe/models/</code></li>
+  <li>回到「新建转录」，引擎选 <strong>faster-whisper</strong>（或 MLX）</li>
+  <li>开始转录 —— 这时候<strong>断网也能跑</strong></li>
+</ol>
+
+<div class="warn">
+<span class="h">本地引擎还要装 Python 包</span>
+<p>下模型只是拿到权重文件，还缺推理库。去「环境检测」页，找到 <code>faster-whisper</code> 这一项点「修复」，或手动 <code>pip install faster-whisper</code>。MLX 需要 <code>pip install mlx-whisper</code>（仅 Apple Silicon）。</p>
+</div>
+
+<!-- ============ 11 ============ -->
+<h2 id="w11"><span class="n">11</span>环境检测与一键修复</h2>
+
+<p>左侧「环境检测」。这一页会检查 11 到 13 项（取决于 bilibili-api 装没装），缺什么一目了然。</p>
+
+<figure>
+  <img src="img/wt_06_env.png" alt="环境检测">
+  <figcaption>顶部是环境概览，下面逐项检查。可修复的项右边有「修复」按钮</figcaption>
+</figure>
+
+<h3>11.1 检查哪些项</h3>
+
+<table>
+<tr><th style="width:26%">类别</th><th>具体项</th></tr>
+<tr><td>运行时</td><td>Python 版本、平台、架构、解释器路径、是否在虚拟环境</td></tr>
+<tr><td>系统工具</td><td>ffmpeg、ffprobe</td></tr>
+<tr><td>核心依赖</td><td>requests、yt-dlp、bilibili-api-python</td></tr>
+<tr><td>B站请求库</td><td>curl_cffi / httpx / aiohttp 至少有一个</td></tr>
+<tr><td>yt-dlp 新旧</td><td>超过 180 天未更新会提醒（平台接口变得快）</td></tr>
+<tr><td>可选后端</td><td>faster-whisper、mlx-whisper、huggingface_hub</td></tr>
+<tr><td>资源</td><td>磁盘剩余空间</td></tr>
+</table>
+
+<h3>11.2 三级处理策略</h3>
+
+<div class="step">
+<div class="tag">L1</div>
+<h4>只读检测</h4>
+<p>随时可跑，不改变任何东西。告诉你「现在什么状态」。</p>
+</div>
+
+<div class="step">
+<div class="tag">L2</div>
+<h4>一键修复</h4>
+<p>点按钮才执行。pip 装依赖、升级 yt-dlp、下载 ffmpeg 静态二进制。<strong>都在用户目录内，不碰系统。</strong></p>
+</div>
+
+<div class="step">
+<div class="tag">L3</div>
+<h4>只给命令</h4>
+<p>需要系统权限的（apt / brew / winget），只显示命令，<strong>绝不替你执行 sudo</strong>。你自己决定装不装。</p>
+</div>
+
+<h3>11.3 一键修复全部</h3>
+
+<p>点「一键修复可修复项」，会依次处理所有可自动修的项，日志实时打在下方。</p>
+
+<div class="tip">
+<span class="h">修完自动复检</span>
+<p>修复动作执行完会重新检测一遍，页面自动刷新状态。不用手动点「重新检测」。</p>
+</div>
+
+<h3>11.4 一个真实的坑：B站请求库</h3>
+
+<p><code>bilibili-api-python</code> 从 17.x 版本起<strong>不再自带请求库</strong>。装完 bilibili-api 后去转录 B 站链接，会报：</p>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>报错原文</b></div><pre><span class="v">ArgsException</span>: 尚未安装第三方请求库或未注册自定义第三方请求库。
+$ pip3 install (curl_cffi|httpx|aiohttp)</pre></div>
+
+<p>遇到这个不用查文档，直接去「环境检测」页，找到 <strong>「B站请求库」</strong> 这一项点修复。它会装 <code>curl_cffi</code>（自带 TLS 指纹，最不容易被风控）。</p>
+
+<!-- ============ 12 ============ -->
+<h2 id="w12"><span class="n">12</span>网页链接与 Cookie</h2>
+
+<h3>12.1 哪些平台要 Cookie</h3>
+
+<table>
+<tr><th style="width:26%">平台</th><th style="width:14%">免 Cookie</th><th>说明</th></tr>
+<tr><td>B站 bilibili.com / b23.tv</td><td>✅</td><td>走官方 API 取音频流，支持分 P</td></tr>
+<tr><td>YouTube</td><td>✅</td><td>需要能访问 YouTube</td></tr>
+<tr><td>微博</td><td>✅</td><td></td></tr>
+<tr><td>抖音</td><td>建议配</td><td>不配也能试，风控严时会失败</td></tr>
+<tr><td>小红书</td><td>❌ 必须</td><td>没 Cookie 直接拒绝</td></tr>
+<tr><td>快手</td><td>❌ 必须</td><td>没 Cookie 直接拒绝</td></tr>
+</table>
+
+<h3>12.2 贴链接转录</h3>
+
+<p>「新建转录」页切到「网页链接」，把地址粘进去即可。B站支持 <code>b23.tv</code> 短链和 <code>?p=3</code> 分P 参数。</p>
+
+<figure>
+  <img src="img/wt_03_url.png" alt="链接模式">
+  <figcaption>贴链接后同样可以选引擎、格式和清理方式</figcaption>
+</figure>
+
+<h3>12.3 怎么配 Cookie</h3>
+
+<p>「服务商设置」页 → 往下滚到「平台 Cookie」→ 三个输入框对应三个平台 → 保存。</p>
+
+<p>Cookie 的获取方式：浏览器登录该平台 → 按 <kbd>F12</kbd> 打开开发者工具 → Network 标签 → 刷新页面 → 点任意请求 → 复制 Request Headers 里的 <code>Cookie</code> 整行。</p>
+
+<div class="dan">
+<span class="h">Cookie 等于登录态</span>
+<p>拿到你 Cookie 的人可以<strong>以你的身份操作该平台</strong>。所以：</p>
+<ul>
+  <li>不要截图分享带 Cookie 的界面</li>
+  <li>不要粘到公开的 issue / 聊天群</li>
+  <li>用完可以在平台改密码或退出登录，Cookie 就失效了</li>
+</ul>
+</div>
+
+<div class="tip">
+<span class="h">Cookie 怎么存的</span>
+<p>存在<strong>你的浏览器 localStorage</strong>，和 API Key 一样。服务端只在转录该平台链接时临时用一下，用完立刻还原，<strong>不写任何文件</strong>。</p>
+</div>
+
+<!-- ============ 13 ============ -->
+<h2 id="w13"><span class="n">13</span>API Key 到底存在哪</h2>
+
+<p>这可能是你最关心的问题。直接说结论：</p>
+
+<div class="info">
+<span class="h">Key 只存在你自己的浏览器里，服务端不落盘</span>
+<p>服务端<strong>不读</strong>任何配置文件里的 key，<strong>不写</strong>任何 key 到磁盘，<strong>不记</strong>任何含 key 的日志。用完即弃。</p>
+</div>
+
+<h3>13.1 数据流</h3>
+
+<pre style="background:#0d1117;border:1px solid var(--line);border-radius:10px;padding:18px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.7;color:#8b98a9">
+  浏览器 localStorage            服务端内存              第三方 API
+  ┌──────────────────┐      ┌───────────────┐      ┌──────────────┐
+  │ {base_url, model, │─────▶│ 本次请求期间   │─────▶│  OpenAI 兼容  │
+  │  api_key}         │      │ 持有，用完丢   │      │  服务商       │
+  └──────────────────┘      └───────────────┘      └──────────────┘
+         ▲                          │
+         │                          ✗ 不写文件
+         │                          ✗ 不写日志
+         └── 只在这里，域名隔离        ✗ 不存数据库
+</pre>
+
+<h3>13.2 磁盘上到底有什么</h3>
+
+<p><code>~/.audio-transcribe/</code> 里只有这些：</p>
+
+<table>
+<tr><th style="width:30%">路径</th><th>内容</th></tr>
+<tr><td><code>tasks.json</code></td><td>任务历史：文件名、状态、耗时、参数。<strong>不含任何密钥</strong></td></tr>
+<tr><td><code>outputs/</code></td><td>转录产物</td></tr>
+<tr><td><code>uploads/</code></td><td>上传的原始媒体（供播放器用）</td></tr>
+<tr><td><code>models/</code></td><td>下载的本地模型</td></tr>
+<tr><td><code>bin/</code></td><td>下载的 ffmpeg 静态二进制</td></tr>
+</table>
+
+<h3>13.3 这三条限制要知道</h3>
+
+<ol>
+  <li><strong>浏览器配置共享</strong>：localStorage 按域名隔离，但同一台机器的同一个浏览器配置文件是共享的。公用电脑上用完建议清理浏览器数据。</li>
+  <li><strong>只用 http，不是 https</strong>：因为只监听 <code>127.0.0.1</code>，流量不出本机，所以没做 TLS。如果哪天你用端口转发给别的机器访问，链条上其他环节记得自己加 TLS。</li>
+  <li><strong>没有鉴权</strong>：任何能访问 <code>127.0.0.1:8787</code> 的进程都能用这个服务。在本机上这是合理的（本来就是你的机器），但<strong>不要暴露到公网</strong>。</li>
+</ol>
+
+<!-- ============ 14 ============ -->
+<h2 id="w14"><span class="n">14</span>Docker 部署</h2>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>docker build -t audio-transcribe .
+docker run --rm -p <span class="v">127.0.0.1</span>:8787:8787 -v at-data:/data audio-transcribe</pre></div>
+
+<h3>14.1 为什么左边必须是 127.0.0.1</h3>
+
+<p>Dockerfile 里容器内的服务监听 <code>0.0.0.0</code> —— 这是<strong>正确</strong>的，因为容器网络和宿主机是隔离的，容器内只听回环的话宿主机就够不到。</p>
+
+<p>真正的暴露面由<strong>宿主机侧的端口绑定</strong>决定：</p>
+
+<table>
+<tr><th style="width:36%">写法</th><th>效果</th></tr>
+<tr><td><code>-p 127.0.0.1:8787:8787</code></td><td>✅ 只有本机能访问</td></tr>
+<tr><td><code>-p 8787:8787</code></td><td>❌ 绑定 0.0.0.0，<strong>整个局域网都能访问</strong></td></tr>
+</table>
+
+<div class="dan">
+<span class="h">把没鉴权的服务挂公网的后果</span>
+<p>等于把你的 API Key 使用额度、你的平台 Cookie 登录态，交给任何能扫到这个端口的人。不要这么做。</p>
+</div>
+
+<h3>14.2 数据持久化</h3>
+
+<p><code>-v at-data:/data</code> 把任务历史、转录产物、下载的模型都存在 Docker 卷里。容器删了数据还在。</p>
+
+<h3>14.3 容器里的可选组件</h3>
+
+<p>镜像默认装好了 ffmpeg 和 Web 依赖，但<strong>没装本地转录后端</strong>（体积太大）。需要离线转录的话，改 Dockerfile 取消这行注释后重新构建：</p>
+
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>Dockerfile</b></div><pre><span class="c"># RUN pip install faster-whisper huggingface_hub</span></pre></div>
+
+<h3>14.4 确实要给别的机器用怎么办</h3>
+
+<p>加一层自己的防护，三选一：</p>
+
+<table>
+<tr><th style="width:30%">方式</th><th>怎么做</th></tr>
+<tr><td><strong>SSH 端口转发</strong></td><td><code>ssh -L 8787:127.0.0.1:8787 user@host</code>，最简单最安全</td></tr>
+<tr><td>Nginx Basic Auth</td><td>反代加一层用户名密码</td></tr>
+<tr><td>Cloudflare Tunnel + Access</td><td>套一层身份认证</td></tr>
+</table>
+
+<!-- ============ 15 ============ -->
+<h2 id="w15"><span class="n">15</span>常见问题</h2>
+
+<h3>启动相关</h3>
+
+<p><strong>报 <code>ModuleNotFoundError: No module named 'fastapi'</code></strong><br>
+依赖没装或虚拟环境没激活。<code>source .venv/bin/activate</code> 后 <code>pip install -r requirements-web.txt</code>。</p>
+
+<p><strong>报 <code>Address already in use</code></strong><br>
+端口被占。<code>python web/server.py --port 9000</code>。</p>
+
+<p><strong>浏览器打不开页面，但终端没报错</strong><br>
+手动访问 <code>http://127.0.0.1:8787</code>。远程服务器上则是端口转发没配对。</p>
+
+<h3>转录相关</h3>
+
+<p><strong>一直卡在「获取音频」</strong><br>
+链接类任务在下载。大文件几分钟正常。超过 10 分钟建议取消，检查网络。</p>
+
+<p><strong>报「转录结果为空」</strong><br>
+音频里没人声（纯音乐、纯噪声），或者引擎没识别出内容。换个引擎试试。</p>
+
+<p><strong>SRT 变灰选不了</strong><br>
+当前引擎没有时间戳（通常是硅基流动）。要么换引擎，要么接受 TXT。</p>
+
+<p><strong>提示「清理已降级为本地规则」</strong><br>
+没配文本模型，或模型服务暂时不可用。<strong>转录结果没丢</strong>，只是少了 LLM 润色。</p>
+
+<p><strong>B站链接报 <code>ArgsException: 尚未安装第三方请求库</code></strong><br>
+去「环境检测」页点「B站请求库」那项的修复，或手动 <code>pip install curl_cffi</code>。</p>
+
+<h3>播放器相关</h3>
+
+<p><strong>播放器不见了</strong><br>
+链接类任务的原始媒体在转录后已清理。用本地文件转录才能边听边改。</p>
+
+<p><strong>上传目录被清空了</strong><br>
+删除任务时会连带删掉上传文件。这是设计行为，不然磁盘会被撑爆。</p>
+
+<h3>性能相关</h3>
+
+<p><strong>转录很慢</strong><br>
+云端引擎取决于服务商排队。想快就换本地引擎（下好模型后），或给云端服务配更好的 key 等级。</p>
+
+<p><strong>能同时跑多个任务吗</strong><br>
+能，但要显式开启：<code>python web/server.py --concurrency 3</code>。默认是 1，因为多数云转录接口有限流，并发反而更慢。</p>
+
+<p><strong>上传大文件报 413</strong><br>
+超了 2 GB 上限。改 <code>AT_MAX_UPLOAD_MB</code> 环境变量，或先用 ffmpeg 压一下。</p>
+
+<h3>模型下载</h3>
+
+<p><strong>下载卡住不动</strong><br>
+换下载源。页面顶部把 <code>hf-mirror.com</code> 改成别的镜像，或挂代理后用 <code>huggingface.co</code>。</p>
+
+<p><strong>下完了但转录报错说没有模型</strong><br>
+推理库没装。去「环境检测」页修 <code>faster-whisper</code>。</p>
+
+<!-- ============ 16 ============ -->
+<h2 id="w16"><span class="n">16</span>速通清单</h2>
+
+<p>只想快点跑起来，照这个做，8 分钟：</p>
+
+<div class="step">
+<div class="tag">1</div>
+<h4>装</h4>
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>git clone https://github.com/weiyinerzui/audio-transcribe.git
+<span class="k">cd</span> audio-transcribe
+python3 -m venv .venv
+<span class="k">source</span> .venv/bin/activate        <span class="c"># Windows: .venv\Scripts\Activate.ps1</span>
+pip install -r requirements-web.txt</pre></div>
+</div>
+
+<div class="step">
+<div class="tag">2</div>
+<h4>起</h4>
+<div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>python web/server.py</pre></div>
+<p>浏览器自动打开 <code>http://127.0.0.1:8787</code>。</p>
+</div>
+
+<div class="step">
+<div class="tag">3</div>
+<h4>转</h4>
+<p>拖一个音视频文件进虚线框 → 引擎保持默认「B站必剪」→ 清理选「本地规则」→ 点「开始转录」。</p>
+</div>
+
+<div class="step">
+<div class="tag">4</div>
+<h4>看</h4>
+<p>完成后点「查看结果」→ 播放器 + 文稿 → 点时间戳试听 → 改个字 → 保存 → 下载 SRT。</p>
+</div>
+
+<div class="step">
+<div class="tag">5</div>
+<h4>（可选）配 AI</h4>
+<p>「服务商设置」→ 点 DeepSeek 预设 → 粘 key → 测试 → 回工作台试「总结」和「问答」。</p>
+</div>
+
+<div class="tip">
+<span class="h">跑通了就好</span>
+<p>剩下的都是锦上添花。环境检测、本地模型、Docker 部署这些，等你真的需要了再回来看对应章节。</p>
+</div>
+
+<hr style="border:none;border-top:1px solid var(--line);margin:50px 0 20px">
+<p style="color:var(--dim);font-size:13px;text-align:center">
+  audio-transcribe Web 版教程 · v1.3.0<br>
+  <a href="index.html">命令行版教程</a> &nbsp;·&nbsp;
+  <a href="https://github.com/weiyinerzui/audio-transcribe">GitHub</a> &nbsp;·&nbsp;
+  <a href="web.md">Markdown 版</a>
+</p>
+
+</main>
+</div>
+
+<script>
+// 顶部进度条
+const prog = document.getElementById('prog');
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const p = h.scrollTop / (h.scrollHeight - h.clientHeight);
+  prog.style.width = (p * 100) + '%';
+});
+
+// 侧栏高亮当前章节
+const links = [...document.querySelectorAll('nav ol a')];
+const heads = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(a => a.classList.remove('on'));
+      const i = heads.indexOf(e.target);
+      if (i >= 0) links[i].classList.add('on');
+    }
+  });
+}, { rootMargin: '-84px 0px -70% 0px' });
+heads.forEach(h => io.observe(h));
+
+// 让 nav 里当前项滚进视野
+setInterval(() => {
+  const on = document.querySelector('nav ol a.on');
+  if (on) on.scrollIntoView({ block: 'nearest' });
+}, 900);
+</script>
+</body>
+</html>

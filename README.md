@@ -6,11 +6,13 @@
 
 **免费开箱即用**：默认走 B 站必剪（bcut）云转录接口，不需要任何 API key，本地 ASR 模型一个都不跑。
 
-**[📖 保姆级安装配置使用教程](docs/index.html)** —— 从零开始的图文分步指南，每一步都有可复制的命令和真实输出。
+**[📖 命令行版保姆级教程](docs/index.html)** —— 从零开始的图文分步指南，每一步都有可复制的命令和真实输出。
+**[🖥 Web 版保姆级教程](docs/web-tutorial.html)** —— 不敲命令，浏览器里拖文件、看进度、改文稿、问 AI。
 
 <a href="https://weiyinerzui.github.io/audio-transcribe/"><img src="https://img.shields.io/badge/在线教程-GitHub%20Pages-4f9cf9?style=flat-square" alt="在线教程"></a>
 <a href="docs/media/tutorial.mp4"><img src="https://img.shields.io/badge/视频教程-57s%20MP4-3fb950?style=flat-square" alt="视频教程"></a>
 <a href="docs/web.md"><img src="https://img.shields.io/badge/Web%20界面-浏览器里点几下-a371f7?style=flat-square" alt="Web 界面"></a>
+<a href="docs/web-tutorial.html"><img src="https://img.shields.io/badge/Web%20版教程-保姆级-d29922?style=flat-square" alt="Web 版教程"></a>
 
 ```
 本地文件 / 网页链接
@@ -397,7 +399,7 @@ docker build -t audio-transcribe .
 docker run --rm -p 127.0.0.1:8787:8787 -v at-data:/data audio-transcribe
 ```
 
-完整说明见 [docs/web.md](docs/web.md)。
+完整说明见 [docs/web.md](docs/web.md)，从零开始的分步教程见 **[docs/web-tutorial.html](docs/web-tutorial.html)**。
 
 ## 项目结构
 
@@ -426,8 +428,9 @@ audio-transcribe/
 │   ├── cleaning.md       # 三种清理模式、网关配置、长音频稳定性
 │   └── troubleshooting.md# 报错排查、失败降级路径、依赖安装
 ├── docs/
-│   ├── index.html        # 图文教程（GitHub Pages）
-│   ├── web.md            # Web 界面文档
+│   ├── index.html        # 命令行版图文教程（GitHub Pages 首页）
+│   ├── web-tutorial.html # Web 版保姆级教程
+│   ├── web.md            # Web 界面参考文档
 │   └── media/tutorial.mp4# 视频教程
 └── engines/
     ├── base.py           # 引擎接口约定

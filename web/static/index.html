@@ -216,7 +216,10 @@ audio{width:100%;height:34px}
     <div class="side-foot">
       <div><span>并发</span><span id="f-conc">1</span></div>
       <div><span>服务</span><span id="f-srv" class="dot ok"></span></div>
-      <div style="margin-top:8px"><button class="btn sm" id="theme-btn" style="width:100%">切换主题</button></div>
+      <div style="margin-top:8px;display:flex;gap:6px">
+        <button class="btn sm" id="theme-btn" style="flex:1">切换主题</button>
+        <button class="btn sm" id="help-btn" style="flex:1" title="打开教程">教程</button>
+      </div>
     </div>
   </aside>
 
@@ -514,6 +517,7 @@ function go(v){
 function applyTheme(t){document.documentElement.dataset.theme=t;LS.set('theme',t)}
 applyTheme(LS.get('theme','dark'));
 $('#theme-btn').onclick=()=>applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+$('#help-btn').onclick=()=>window.open('https://weiyinerzui.github.io/audio-transcribe/web-tutorial.html','_blank');
 
 /* ==================== 视图切换 ==================== */
 $$('.nav button').forEach(b=>b.onclick=()=>go(b.dataset.view));
