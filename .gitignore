@@ -46,3 +46,6 @@ models/
 # 打包产物与下载缓存（体积大，由 CI 构建）
 packaging/dist/
 packaging/.cache/
+
+# 绿色包在包根放 bin/ffmpeg，本地测试不要提交
+/bin/

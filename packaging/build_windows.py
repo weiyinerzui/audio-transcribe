@@ -374,9 +374,37 @@ def verify_deps(pyexe: Path, staging: Path) -> None:
     log(f"  {r.stdout.strip()}")
 
 
-def build(clean: bool = True, skip_pip: bool = False):
+def stage_ffmpeg(bin_dir: Path, cache: Path) -> None:
+    """下载 ffmpeg 并铺到包的 bin/ 下。"""
+    log("处理 ffmpeg")
+    ff_zip = download(FFMPEG_URL, cache / "ffmpeg-win64.zip")
+
+    with zipfile.ZipFile(ff_zip) as z:
+        names = z.namelist()
+        # shared 构建缺 DLL 就跑不起来，所以 exe 和 dll 一起搬
+        wanted = [n for n in names
+                  if "/bin/" in n and n.lower().endswith((".exe", ".dll"))]
+        if not wanted:
+            raise SystemExit("ffmpeg 包里 /bin/ 下没有 exe/dll，压缩包结构变了？")
+
+        got = set()
+        for n in wanted:
+            fname = n.rsplit("/", 1)[-1]
+            if fname.lower() in ("ffmpeg.exe", "ffprobe.exe") or fname.lower().endswith(".dll"):
+                with z.open(n) as src, open(bin_dir / fname, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
+                got.add(fname)
+
+    for need in ("ffmpeg.exe", "ffprobe.exe"):
+        if need not in got:
+            raise SystemExit(f"ffmpeg 包里没找到 {need}")
+    n_dll = len([g for g in got if g.lower().endswith(".dll")])
+    log(f"  ffmpeg.exe / ffprobe.exe + {n_dll} 个 DLL → {bin_dir}")
+
+
+def build(clean: bool = True, skip_pip: bool = False, with_ffmpeg: bool = True):
     cache = ROOT / "packaging" / ".cache"
-    staging = OUT / NAME
+    staging = OUT / (NAME if with_ffmpeg else NAME + "-slim")
 
     if clean and staging.exists():
         log(f"清理旧产物 {staging}")
@@ -420,37 +448,17 @@ def build(clean: bool = True, skip_pip: bool = False):
     slim_python(staging)
 
     # ---- 3. ffmpeg
-    log("处理 ffmpeg")
-    ff_zip = download(FFMPEG_URL, cache / "ffmpeg-win64.zip")
     bin_dir = staging / "bin"
     bin_dir.mkdir(exist_ok=True)
-
-    with zipfile.ZipFile(ff_zip) as z:
-        names = z.namelist()
-        # 只取 /bin/ 下的 exe 和 dll。shared 构建缺了 dll 就跑不起来，
-        # 所以这里必须整目录搬，不能只挑两个 exe。
-        wanted = [
-            n for n in names
-            if "/bin/" in n and n.lower().endswith((".exe", ".dll"))
-        ]
-        if not wanted:
-            raise SystemExit("ffmpeg 包里 /bin/ 下没有 exe/dll，压缩包结构变了？")
-
-        got = set()
-        for n in wanted:
-            fname = n.rsplit("/", 1)[-1]
-            if fname.lower() in ("ffmpeg.exe", "ffprobe.exe") or fname.lower().endswith(".dll"):
-                with z.open(n) as src, open(bin_dir / fname, "wb") as dst:
-                    shutil.copyfileobj(src, dst)
-                got.add(fname)
-
-        for need in ("ffmpeg.exe", "ffprobe.exe"):
-            if need not in got:
-                raise SystemExit(f"ffmpeg 包里没找到 {need}")
-        n_dll = len([g for g in got if g.lower().endswith(".dll")])
-        log(f"  ffmpeg.exe / ffprobe.exe + {n_dll} 个 DLL → {bin_dir}")
-        if n_dll == 0:
-            log("  ⚠ 没有 DLL，若下载到的是静态版则正常")
+    if with_ffmpeg:
+        stage_ffmpeg(bin_dir, cache)
+    else:
+        log("轻量版：不打包 ffmpeg")
+        log("  首次在界面里用时会自动下载到 %LOCALAPPDATA%，约 80MB，一次性")
+        (bin_dir / "README.txt").write_text(
+            "本目录由 audio-transcribe 在首次使用 ffmpeg 时自动填充。\n"
+            "如果你的网络访问不了 GitHub，请看 使用说明.txt 里的离线安装办法。\n",
+            encoding="utf-8")
 
     # ---- 4. 应用代码（用 git archive 拿干净副本，不含 .git）
     log("拷贝应用代码")
@@ -509,7 +517,7 @@ def build(clean: bool = True, skip_pip: bool = False):
     # ---- 6. 打包
     report_sizes(staging)
     log("压缩")
-    zip_path = OUT / f"{NAME}.zip"
+    zip_path = OUT / (f"{NAME}.zip" if with_ffmpeg else f"{NAME}-slim.zip")
     if zip_path.exists():
         zip_path.unlink()
     # git archive 出来的文件 mtime 取自 commit 时间，可能早于 1980，
@@ -545,8 +553,10 @@ def main():
     ap = argparse.ArgumentParser(description="构建 Windows 绿色包")
     ap.add_argument("--keep", action="store_true", help="保留旧产物，不清理")
     ap.add_argument("--skip-pip", action="store_true", help="跳过 pip（交叉构建调试用）")
+    ap.add_argument("--slim", action="store_true",
+                    help="轻量版：不打包 ffmpeg，首次使用时由界面自动下载")
     a = ap.parse_args()
-    build(clean=not a.keep, skip_pip=a.skip_pip)
+    build(clean=not a.keep, skip_pip=a.skip_pip, with_ffmpeg=not a.slim)
 
 
 if __name__ == "__main__":

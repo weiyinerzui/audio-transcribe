@@ -34,6 +34,23 @@ from web import auth
 from subtitle import Segment, Transcript
 from taskqueue import HOME, OUTPUT_DIR, UPLOAD_DIR, Queue, Task
 
+# 绿色包运行时：包内 bin/ 放 ffmpeg/ffprobe，应优先于系统里已有的。
+# 只有用户目录还没装过 ffmpeg 时才注入 PATH ——
+# 用户在界面里点「安装 ffmpeg」装到数据目录的版本依然生效。
+def _prepend_bundled_bin() -> None:
+    bundled = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin")
+    exe_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
+    if not os.path.isfile(os.path.join(bundled, exe_name)):
+        return
+    home = Path(os.environ.get("AUDIO_TRANSCRIBE_HOME") or str(HOME / ".audio-transcribe"))
+    if os.path.isfile(home / "bin" / exe_name):
+        return
+    os.environ["PATH"] = bundled + os.pathsep + os.environ.get("PATH", "")
+    print(f"[audio-transcribe] 优先使用包内 ffmpeg：{bundled}", flush=True)
+
+
+_prepend_bundled_bin()
+
 app = FastAPI(title="audio-transcribe", docs_url=None, redoc_url=None)
 
 QUEUE = Queue(concurrency=int(os.environ.get("AT_CONCURRENCY", "1")))
