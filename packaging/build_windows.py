@@ -54,10 +54,15 @@ _PBS_EXPECT = [0]   # resolve_python_url() 顺带记下期望字节数，供 dow
 
 FFMPEG_URL = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
 
+# Windows 长路径前缀（\\?\）。写成常量而不是内联字符串，
+# 免得反斜杠在源码里被转义成一排问号。
+LONG_PREFIX = "\\\\?\\"
+
 PIP_PACKAGES = [
     "requests>=2.28",
     "yt-dlp>=2024.1.0",
     "bilibili-api-python>=16.0.0",
+    "curl_cffi>=0.7",        # bilibili-api 17.x 起不自带请求库，缺了 B 站功能是坏的
     "fastapi>=0.110",
     "uvicorn>=0.27",
     "python-multipart>=0.0.9",
@@ -66,6 +71,58 @@ PIP_PACKAGES = [
 
 def log(msg: str):
     print(f"[build] {msg}", flush=True)
+
+
+def long_path(p: Path) -> str:
+    """Windows 上给路径加 ``\\\\?\\`` 前缀，绕开 260 字符 MAX_PATH 限制。
+
+    python-build-standalone 的 site-packages 里 pip/_vendor 一类深路径，
+    再加上 dist/audio-transcribe-win64/ 前缀，很容易超过 260。
+    超了会抛 FileNotFoundError [WinError 3]，且报错信息是「找不到文件」，
+    完全看不出是路径太长。
+    """
+    s = str(p.resolve())
+    if os.name == "nt" and not s.startswith(LONG_PREFIX):
+        return LONG_PREFIX + s
+    return s
+
+
+def walk_files(root: Path):
+    """遍历所有文件，Windows 下不受 MAX_PATH 限制，且不跟随 symlink。"""
+    base = long_path(root)
+    for dirpath, _dirnames, filenames in os.walk(base):
+        for fn in filenames:
+            yield Path(dirpath) / fn
+
+
+def rmtree_force(p: Path) -> None:
+    """删目录，遇只读文件先改权限再删。
+
+    Windows 上 PBS 解出来的文件带只读位，git archive 导出的也可能只读，
+    直接 rmtree 会 PermissionError [WinError 5]。
+    """
+    if not p.exists():
+        return
+
+    def _onerr(func, path, _exc):
+        try:
+            os.chmod(path, 0o666)
+            func(path)
+        except Exception:
+            pass
+
+    try:
+        shutil.rmtree(p, onexc=_onerr) if sys.version_info >= (3, 12) else shutil.rmtree(p, onerror=_onerr)
+    except TypeError:
+        shutil.rmtree(p, onerror=_onerr)
+
+
+def safe_extract(tar, dest, filter_name: str) -> None:
+    """tarfile 解压。3.12 起显式给 filter，避免 3.14 默认值变化导致行为漂移。"""
+    if sys.version_info >= (3, 12):
+        tar.extractall(dest, filter=filter_name)
+    else:
+        tar.extractall(dest)
 
 
 def resolve_python_url(series: str = PBS_PY_SERIES) -> str:
@@ -211,7 +268,8 @@ def verify_deps(pyexe: Path, staging: Path) -> None:
         "print('OK', fastapi.__version__, uvicorn.__version__)"
     )
     r = subprocess.run([str(pyexe), "-c", code], capture_output=True, text=True,
-                       encoding="utf-8", errors="replace", cwd=str(staging))
+                       encoding="utf-8", errors="replace", cwd=str(staging),
+                       env={**os.environ, "PYTHONPATH": str(staging / "python" / "Lib" / "site-packages")})
     if r.returncode != 0:
         log(r.stdout[-1500:])
         log(r.stderr[-1500:])
@@ -225,7 +283,7 @@ def build(clean: bool = True, skip_pip: bool = False):
 
     if clean and staging.exists():
         log(f"清理旧产物 {staging}")
-        shutil.rmtree(staging)
+        rmtree_force(staging)
     staging.mkdir(parents=True, exist_ok=True)
 
     # ---- 1. Python 运行时
@@ -235,7 +293,8 @@ def build(clean: bool = True, skip_pip: bool = False):
     py_zip = download(PBS_URL, cache / "python-win64.tar.gz", _PBS_EXPECT[0])
     log("解压 Python 运行时")
     with tarfile.open(py_zip) as t:
-        t.extractall(staging)
+        # filter="tar"：PBS 包里可能有符号链接，data 模式会拒绝
+        safe_extract(t, staging, "tar")
     # 包里是 python/ 目录，正好对口
     pyexe = staging / "python" / "python.exe"
     if not pyexe.exists():
@@ -289,7 +348,7 @@ def build(clean: bool = True, skip_pip: bool = False):
             ["git", "archive", "HEAD"], cwd=ROOT, check=True, stdout=subprocess.PIPE
         ).stdout
         with tarfile.open(fileobj=io.BytesIO(data)) as t:
-            t.extractall(app)
+            safe_extract(t, app, "data")
         # 教程/构建脚本不进包：docs 有 3MB+ 的截图和视频，packaging 用户用不上
         for drop in ("docs", "packaging", ".github"):
             p_drop = app / drop
@@ -342,17 +401,18 @@ def build(clean: bool = True, skip_pip: bool = False):
     date_time = (now.tm_year, now.tm_mon, now.tm_mday, now.tm_hour, now.tm_min, now.tm_sec)
 
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
-        for p in sorted(staging.rglob("*")):
-            arc = p.relative_to(staging)
-            if p.is_dir():
-                continue
+        root_long = long_path(staging)
+        for p in sorted(walk_files(staging)):
+            arc = Path(p).relative_to(root_long)
+            if p.is_symlink():
+                continue   # Windows 包里不放软链
             zi = zipfile.ZipInfo(str(arc).replace(os.sep, "/"), date_time=date_time)
             zi.compress_type = zipfile.ZIP_DEFLATED
             # bit 0 = 0x01 表示用 unix 权限位；全给 644 / exe 给 755，
             # 但 Windows 不认这个，用户看到的是文件本身，不影响双击运行
             mode = 0o755 if p.suffix.lower() in (".exe", ".bat", ".cmd", ".sh") else 0o644
             zi.external_attr = mode << 16
-            with open(p, "rb") as fh:
+            with open(long_path(p), "rb") as fh:
                 z.writestr(zi, fh.read())
 
     size_mb = zip_path.stat().st_size / 1024 / 1024
