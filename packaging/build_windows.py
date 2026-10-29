@@ -30,6 +30,7 @@ import argparse
 import io
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -171,6 +172,53 @@ def download(url: str, dest: Path, expect_size: int = 0) -> Path:
     raise SystemExit(f"下载 {url} 失败（已重试 4 次）：{last_err}")
 
 
+def install_deps(pyexe: Path, staging: Path) -> None:
+    """把依赖装进包内的 site-packages，用户侧不跑 pip。"""
+    log("安装依赖（这一步要几分钟）")
+    site = staging / "python" / "Lib" / "site-packages"
+    site.mkdir(parents=True, exist_ok=True)
+
+    # 国内镜像优先，失败回官方源。CI 在海外，官方源其实更快，
+    # 所以顺序是：官方 → 清华 → 阿里。
+    indexes = [None, "https://pypi.tuna.tsinghua.edu.cn/simple",
+               "https://mirrors.aliyun.com/pypi/simple"]
+    last = ""
+    for idx in indexes:
+        cmd = [str(pyexe), "-m", "pip", "install", "--no-warn-script-location",
+               "--no-cache-dir", "--disable-pip-version-check",
+               "--target", str(site), *PIP_PACKAGES]
+        if idx:
+            cmd += ["-i", idx]
+        log(f"  pip install（源：{idx or '默认 PyPI'}）")
+        r = subprocess.run(cmd, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+        if r.returncode == 0:
+            log("  依赖装好了")
+            return
+        last = (r.stdout or "")[-1500:] + "\n" + (r.stderr or "")[-1500:]
+        log(f"  失败，换下一个源")
+    log(last)
+    raise SystemExit("pip 安装失败（三个源都试过了）")
+
+
+def verify_deps(pyexe: Path, staging: Path) -> None:
+    """真跑一次导入，别等用户双击了才发现缺包。"""
+    log("自检：导入关键模块")
+    code = (
+        "import sys;"
+        "import fastapi, uvicorn, requests, multipart, yt_dlp;"
+        "import bilibili_api;"
+        "print('OK', fastapi.__version__, uvicorn.__version__)"
+    )
+    r = subprocess.run([str(pyexe), "-c", code], capture_output=True, text=True,
+                       encoding="utf-8", errors="replace", cwd=str(staging))
+    if r.returncode != 0:
+        log(r.stdout[-1500:])
+        log(r.stderr[-1500:])
+        raise SystemExit("自检失败：包内依赖不完整")
+    log(f"  {r.stdout.strip()}")
+
+
 def build(clean: bool = True, skip_pip: bool = False):
     cache = ROOT / "packaging" / ".cache"
     staging = OUT / NAME
@@ -202,25 +250,15 @@ def build(clean: bool = True, skip_pip: bool = False):
 
     # ---- 2. 依赖
     if not skip_pip:
-        log("安装依赖（这一步要几分钟）")
-        site = staging / "python" / "Lib" / "site-packages"
-        site.mkdir(parents=True, exist_ok=True)
-        cmd = [
-            str(pyexe), "-m", "pip", "install", "--no-warn-script-location",
-            "--target", str(site), *PIP_PACKAGES,
-            "-i", "https://pypi.tuna.tsinghua.edu.cn/simple",
-        ]
-        # 交叉构建时没法跑 Windows 的 python.exe，只能在本机 Windows 上跑
         if os.name != "nt":
             log("⚠ 当前不是 Windows，跳过 pip 安装。")
-            log("  请在 Windows 上重跑，或用 GitHub Actions 构建。")
+            log("  跨平台装出来的 wheel 是错的，留到 Windows 上装。")
         else:
-            r = subprocess.run(cmd, capture_output=True, text=True)
-            if r.returncode != 0:
-                log(r.stdout[-2000:])
-                log(r.stderr[-2000:])
-                raise SystemExit("pip 安装失败")
-            log("依赖装好了")
+            install_deps(pyexe, staging)
+
+    # ---- 2.5 自检：确认关键模块真的在里面
+    if not skip_pip and os.name == "nt":
+        verify_deps(pyexe, staging)
 
     # ---- 3. ffmpeg
     log("处理 ffmpeg")
@@ -277,6 +315,19 @@ def build(clean: bool = True, skip_pip: bool = False):
     for f in launcher.iterdir():
         shutil.copy2(f, staging / f.name)
 
+    # ---- 5.5 瘦身：pip 留下的 Scripts/*.exe、测试缓存、__pycache__ 都不需要
+    scripts = staging / "python" / "Scripts"
+    if scripts.is_dir():
+        for f in list(scripts.iterdir()):
+            if f.suffix.lower() in (".exe", ".exe.manifest"):
+                f.unlink(missing_ok=True)
+    n_pyc = 0
+    for d in staging.rglob("__pycache__"):
+        n_pyc += len(list(d.glob("*.pyc")))
+        shutil.rmtree(d, ignore_errors=True)
+    if n_pyc:
+        log(f"清理 {n_pyc} 个 .pyc")
+
     # ---- 6. 打包
     log("压缩")
     zip_path = OUT / f"{NAME}.zip"
@@ -319,4 +370,26 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        log("")
+        log("=" * 60)
+        log("构建失败。排查用上下文：")
+        log(f"  平台      : {sys.platform} / {platform.machine()}")
+        log(f"  Python    : {sys.version.split()[0]}")
+        log(f"  工作目录  : {Path.cwd()}")
+        log(f"  产物目录  : {OUT}")
+        log(f"  缓存目录  : {ROOT / 'packaging' / '.cache'}")
+        log(f"  PBS_URL   : {PBS_URL or '(未解析)'}")
+        for d in (OUT, ROOT / "packaging" / ".cache"):
+            if d.exists():
+                for f in sorted(d.rglob("*"))[:20]:
+                    if f.is_file():
+                        log(f"    {f.relative_to(d.parent)}  {f.stat().st_size} B")
+        log("=" * 60)
+        raise SystemExit(1)
