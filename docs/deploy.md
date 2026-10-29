@@ -183,7 +183,91 @@ server {
 
 ---
 
-## 六、常见问题
+
+## 六、Windows 免安装包
+
+给完全不想碰命令行的用户：
+
+1. 到 [Releases](https://github.com/weiyinerzui/audio-transcribe/releases/latest) 下 `audio-transcribe-win64.zip`
+2. **完整解压**到一个纯英文路径，例如 `D:\audio-transcribe`
+3. 双击 `启动.bat`
+4. 浏览器自动打开 `http://127.0.0.1:8787`
+
+包里带了：便携 Python 3.12、`ffmpeg.exe` / `ffprobe.exe`、全部依赖。
+**用户侧不跑 pip、不联网下载模型**，解压即用。
+
+数据落在包内 `data\` 目录，整个文件夹拷到别的电脑（U 盘也行）继续用。
+
+### 它做了什么
+
+`启动.bat` 依次：
+
+1. `chcp 65001` 切换 UTF-8，中文不乱码
+2. 校验 `python\python.exe` 和 `app\web\server.py`，缺文件直接提示「重新完整解压」
+3. 设 `AUDIO_TRANSCRIBE_HOME=%CD%\data`，并把 `bin\` 加进 `PATH`
+4. `netstat` 查 8787 端口，被占用就告诉用户怎么办（关旧窗口或改端口）
+5. 后台启动服务，轮询 `/api/health`，最多等 60 秒
+6. 起来了才开浏览器；失败则 `pause` 保留窗口并打印日志尾部
+
+`停止.bat` 按端口找到进程并 `taskkill`。
+
+### 自己构建
+
+```bash
+# 必须在 Windows 上跑 pip 那一步：装的是 Windows 版 wheel
+python packaging/build_windows.py
+# 产物：packaging/dist/audio-transcribe-win64.zip
+```
+
+构建脚本只用标准库，构建者不用装任何东西。正式产物由 GitHub Actions
+在 `windows-latest` 上构建，打 tag 自动附到 Release：
+
+```bash
+git tag v1.4.0
+git push origin v1.4.0
+```
+
+### 已知限制
+
+- **只在 Windows x64 上测试**。ARM 版 Windows 没测（可跑 x64 模拟层）
+- 杀毒软件可能误报（打包后的 Python 常见），加信任即可
+- 绿色包不预置本地 whisper 模型，要离线转录得在界面里下载一次
+- 路径带中文或括号时，个别 Windows 环境仍可能出问题，建议纯英文路径
+
+## 七、macOS / Linux 一键安装
+
+```bash
+curl -fsSL https://weiyinerzui.github.io/audio-transcribe/install.sh | bash
+```
+
+脚本做的事：
+
+1. 找 Python 3.9+；macOS 上没有 Homebrew 会提示三条安装途径
+2. 在 `~/.audio-transcribe/runtime` 建独立 venv，**不碰系统 Python、不要 sudo**
+3. 装依赖，pip 源三级回退：清华镜像 → 阿里云 → 官方
+4. 带版本约束失败时去掉约束重试（旧版锁 `lxml 4.6.5` 在新 Python 上编译不过）
+5. 补装 `curl_cffi`（`bilibili-api-python` 17.x 不自带请求库）
+6. 下载 ffmpeg 静态二进制到 `~/.audio-transcribe/bin`，Linux 与 macOS 分别取源
+7. 生成 `~/.audio-transcribe/audio-transcribe` 启动器，软链到 `~/.local/bin`
+
+装完直接：
+
+```bash
+audio-transcribe                # 开服务并自动开浏览器
+audio-transcribe --port 9000    # 换端口
+```
+
+想先审查脚本再执行（推荐）：
+
+```bash
+curl -fsSL https://weiyinerzui.github.io/audio-transcribe/install.sh -o install.sh
+less install.sh
+bash install.sh
+```
+
+可用环境变量：`AT_HOME` 自定义安装目录、`AT_VERSION` 指定版本。
+
+## 八、常见问题
 
 **Q：登录后刷新页面又要重新登录？**
 

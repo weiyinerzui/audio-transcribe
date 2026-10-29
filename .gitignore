@@ -42,3 +42,7 @@ data/
 outputs/
 uploads/
 models/
+
+# 打包产物与下载缓存（体积大，由 CI 构建）
+packaging/dist/
+packaging/.cache/
