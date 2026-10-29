@@ -6,6 +6,8 @@
 
 **免费开箱即用**：默认走 B 站必剪（bcut）云转录接口，不需要任何 API key，本地 ASR 模型一个都不跑。
 
+> **不想装 Python、不想碰命令行？** Windows 下个 zip 解压双击就能用，见 [不想装环境？下载就能用](#不想装环境下载就能用)。
+
 **[📖 命令行版保姆级教程](docs/index.html)** —— 从零开始的图文分步指南，每一步都有可复制的命令和真实输出。
 **[🖥 Web 版保姆级教程](docs/web-tutorial.html)** —— 不敲命令，浏览器里拖文件、看进度、改文稿、问 AI。
 
@@ -13,6 +15,7 @@
 <a href="docs/media/tutorial.mp4"><img src="https://img.shields.io/badge/视频教程-57s%20MP4-3fb950?style=flat-square" alt="视频教程"></a>
 <a href="docs/web.md"><img src="https://img.shields.io/badge/Web%20界面-浏览器里点几下-a371f7?style=flat-square" alt="Web 界面"></a>
 <a href="docs/web-tutorial.html"><img src="https://img.shields.io/badge/Web%20版教程-保姆级-d29922?style=flat-square" alt="Web 版教程"></a>
+<a href="https://github.com/weiyinerzui/audio-transcribe/releases/latest"><img src="https://img.shields.io/badge/Windows-免安装%20zip-e5534b?style=flat-square" alt="Windows 免安装包"></a>
 
 ```
 本地文件 / 网页链接
@@ -371,6 +374,25 @@ export NINEROUTER_API_KEY="sk-xxxxxxxx"
 python3 transcribe.py 视频.mp4 --engine bcut -o 字幕.srt 2>/dev/null   # 只拿路径
 ```
 
+## 不想装环境？下载就能用
+
+**Windows 用户**：到 [Releases](https://github.com/weiyinerzui/audio-transcribe/releases/latest)
+下 `audio-transcribe-win64.zip`，解压双击「启动.bat」。
+
+不用装 Python，不用装 ffmpeg，不用敲任何命令。包里已经带好了运行时和 ffmpeg，
+数据存在解压目录下的 `data/`，整个文件夹拷到别的电脑照样能用。
+
+**macOS / Linux 用户**：一条命令搞定：
+
+```bash
+curl -fsSL https://weiyinerzui.github.io/audio-transcribe/install.sh | bash
+```
+
+脚本会自动找 Python、建独立 venv、下载 ffmpeg 静态版，不碰系统环境、不要 sudo。
+装完直接跑 `audio-transcribe`。
+
+> 想先审查脚本再执行：`curl -fsSL .../install.sh -o install.sh && less install.sh && bash install.sh`
+
 ## Web 界面
 
 不想敲命令的话，浏览器里点几下就行：
@@ -399,7 +421,37 @@ docker build -t audio-transcribe .
 docker run --rm -p 127.0.0.1:8787:8787 -v at-data:/data audio-transcribe
 ```
 
-完整说明见 [docs/web.md](docs/web.md)，从零开始的分步教程见 **[docs/web-tutorial.html](docs/web-tutorial.html)**。
+### 部署到服务器 / 分享给别人用
+
+```bash
+docker run -d --name at \
+  -p 127.0.0.1:8787:8787 \
+  -v at-data:/data \
+  -e AT_ACCESS_PASSWORD='你的访问密码' \
+  -e AT_DAILY_LIMIT=10 \
+  -e AT_DAILY_MINUTES=60 \
+  -e AT_MAX_UPLOAD_MB=100 \
+  --restart unless-stopped \
+  audio-transcribe
+```
+
+多账户（admin 不限额度，访客每日限额）：
+
+```bash
+export AT_USERS_JSON='{
+  "admin": {"password": "强密码", "role": "admin"},
+  "guest": {"password": "访客密码", "role": "guest", "daily_tasks": 10, "daily_minutes": 60}
+}'
+```
+
+也可以点按钮部署到 Railway：
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/weiyinerzui/audio-transcribe)
+
+完整说明见：
+- [docs/web.md](docs/web.md) —— Web 界面功能参考
+- [docs/deploy.md](docs/deploy.md) —— **部署、访问控制、限额、反向代理**
+- [docs/web-tutorial.html](docs/web-tutorial.html) —— 从零开始的分步教程
 
 ## 项目结构
 
@@ -431,7 +483,12 @@ audio-transcribe/
 │   ├── index.html        # 命令行版图文教程（GitHub Pages 首页）
 │   ├── web-tutorial.html # Web 版保姆级教程
 │   ├── web.md            # Web 界面参考文档
+│   ├── deploy.md         # 部署 / 访问控制 / 限额
 │   └── media/tutorial.mp4# 视频教程
+├── packaging/
+│   ├── build_windows.py  # 打 Windows 绿色包
+│   ├── install.sh        # macOS / Linux 一键安装
+│   └── launcher/         # 绿色包里的启动脚本
 └── engines/
     ├── base.py           # 引擎接口约定
     ├── bcut.py           # B 站必剪免费接口（移植 VideoCaptioner 的 BcutASR）

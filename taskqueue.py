@@ -45,6 +45,7 @@ class Task:
     finished: float = 0.0
     degraded: bool = False
     elapsed: float = 0.0
+    owner: str = ""          # 提交者（多账户模式下用于隔离历史）
     _cancel: threading.Event = field(default_factory=threading.Event, repr=False)
     _events: list = field(default_factory=list, repr=False)
     _subs: list = field(default_factory=list, repr=False)
@@ -54,7 +55,7 @@ class Task:
     _PUBLIC_FIELDS = (
         "id", "kind", "source", "source_type", "engine", "fmt", "clean",
         "status", "stage", "progress", "message", "output_path", "error",
-        "created", "started", "finished", "degraded", "elapsed",
+        "created", "started", "finished", "degraded", "elapsed", "owner",
     )
 
     def public(self) -> dict:

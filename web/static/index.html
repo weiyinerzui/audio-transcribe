@@ -202,6 +202,19 @@ audio{width:100%;height:34px}
 </style>
 </head>
 <body>
+<div id="login" style="display:none;position:fixed;inset:0;z-index:999;background:var(--bg);align-items:center;justify-content:center">
+  <form id="login-form" style="width:320px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:26px 24px">
+    <div style="font-size:19px;font-weight:650;margin-bottom:4px">audio<span style="color:var(--acc)">-</span>transcribe</div>
+    <div style="font-size:12.5px;color:var(--dim);margin-bottom:20px">请输入访问密码</div>
+    <input id="login-user" placeholder="用户名" value="guest" autocomplete="username"
+           style="width:100%;margin-bottom:9px;padding:9px 11px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font-size:13.5px">
+    <input id="login-pass" type="password" placeholder="密码" autocomplete="current-password"
+           style="width:100%;margin-bottom:14px;padding:9px 11px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font-size:13.5px">
+    <button class="btn" type="submit" style="width:100%;justify-content:center">进入</button>
+    <div id="login-err" style="color:#e5534b;font-size:12.5px;margin-top:11px;min-height:17px"></div>
+  </form>
+</div>
+
 <div id="app">
   <aside>
     <div class="brand">audio<i>-</i>transcribe</div>
@@ -216,6 +229,8 @@ audio{width:100%;height:34px}
     <div class="side-foot">
       <div><span>并发</span><span id="f-conc">1</span></div>
       <div><span>服务</span><span id="f-srv" class="dot ok"></span></div>
+      <div id="f-user" style="display:none"><span>用户</span><span id="f-user-name">—</span></div>
+      <div id="f-quota" style="display:none"><span>今日剩余</span><span id="f-quota-left">—</span></div>
       <div style="margin-top:8px;display:flex;gap:6px">
         <button class="btn sm" id="theme-btn" style="flex:1">切换主题</button>
         <button class="btn sm" id="help-btn" style="flex:1" title="打开教程">教程</button>
@@ -1064,10 +1079,51 @@ $('#env-fix').onclick=async()=>{
 };
 
 /* ==================== 启动 ==================== */
-(async function init(){
+let AUTH={enabled:false,user:null,role:null,quota:null};
+
+function paintAuth(){
+  if(!AUTH.enabled){ $('#f-user').style.display='none'; $('#f-quota').style.display='none'; return; }
+  $('#f-user').style.display='flex';
+  $('#f-user-name').textContent=AUTH.user+(AUTH.role==='admin'?' (admin)':'');
+  const q=AUTH.quota||{};
+  if(q.unlimited){ $('#f-quota').style.display='none'; return; }
+  $('#f-quota').style.display='flex';
+  const parts=[];
+  if(q.left_tasks!=null) parts.push(q.left_tasks+' 次');
+  if(q.left_minutes!=null) parts.push(Math.round(q.left_minutes)+' 分钟');
+  $('#f-quota-left').textContent=parts.join(' · ')||'—';
+}
+
+function showLogin(msg){
+  $('#login').style.display='flex';
+  $('#app').style.display='none';   // 别让用户在遮罩下误点到主界面
+  $('#login-err').textContent=msg||'';
+  $('#login-pass').focus();
+}
+
+$('#login-form').onsubmit=async (ev)=>{
+  ev.preventDefault();
+  $('#login-err').textContent='';
+  try{
+    const r=await fetch('/api/auth/login',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:$('#login-user').value.trim()||'guest',
+                           password:$('#login-pass').value})
+    });
+    const d=await r.json();
+    if(!r.ok){ $('#login-err').textContent=d.detail||'登录失败'; return; }
+    AUTH={enabled:d.enabled,user:d.user,role:d.role,quota:d.quota};
+    $('#login').style.display='none';
+    $('#app').style.display='';
+    paintAuth();
+    await bootAfterAuth();
+  }catch(e){ $('#login-err').textContent='网络错误：'+e.message }
+};
+
+async function bootAfterAuth(){
   try{
     const h=await fetch('/api/health'); $('#f-srv').className='dot '+(h.ok?'ok':'bad');
-  }catch(e){$('#f-srv').className='dot bad'}
+  }catch(e){ $('#f-srv').className='dot bad'}
   await loadEngines();
   renderLLM();
   updStartHint();
@@ -1075,6 +1131,19 @@ $('#env-fix').onclick=async()=>{
   if(!ps.length){
     $('#start-hint').textContent='提示：先选文件，再点开始';
   }
+}
+
+(async function init(){
+  try{
+    const r=await fetch('/api/auth/me');
+    const d=await r.json();
+    if(d.enabled && !d.user){
+      AUTH.enabled=true; showLogin(''); return;
+    }
+    AUTH={enabled:d.enabled,user:d.user,role:d.role,quota:d.quota};
+    paintAuth();
+  }catch(e){ /* 鉴权探测失败就按开放模式继续 */ }
+  await bootAfterAuth();
 })();
 </script>
 </body>

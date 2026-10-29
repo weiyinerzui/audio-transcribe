@@ -30,6 +30,7 @@ from pydantic import BaseModel
 import env_check
 import model_manager
 import pipeline
+from web import auth
 from subtitle import Segment, Transcript
 from taskqueue import HOME, OUTPUT_DIR, UPLOAD_DIR, Queue, Task
 
@@ -37,6 +38,62 @@ app = FastAPI(title="audio-transcribe", docs_url=None, redoc_url=None)
 
 QUEUE = Queue(concurrency=int(os.environ.get("AT_CONCURRENCY", "1")))
 STATIC = HERE / "static"
+
+# ---------------------------------------------------------------- 访问控制
+#
+# 不设 AT_ACCESS_PASSWORD / AT_USERS_JSON 时完全开放（本地自用）。
+# 设了就要登录，按账户记每日限额，admin 不限。
+
+
+def _client_ip(request: Request) -> str:
+    """反代后面取真实 IP，否则按直连 IP。"""
+    fwd = request.headers.get("x-forwarded-for", "")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def current_user(request: Request) -> auth.User | None:
+    """已登录返回 User，否则 None。未启用鉴权时返回 admin 语义的匿名用户。"""
+    if not auth.enabled():
+        return auth.User(name="local", role="admin")
+    return auth.read_token(request.cookies.get(auth.COOKIE_NAME, ""))
+
+
+def require_user(request: Request) -> auth.User:
+    u = current_user(request)
+    if not u:
+        raise HTTPException(401, "请先登录")
+    return u
+
+
+def require_quota(request: Request) -> auth.User:
+    """提交转录前调用：既校验登录，也校验今日额度。"""
+    u = require_user(request)
+    ok, msg = auth.USAGE.check(u)
+    if not ok:
+        raise HTTPException(429, msg)
+    return u
+
+
+@app.middleware("http")
+async def _guard(request: Request, call_next):
+    """启用鉴权后，除登录页 / 登录接口 / 健康检查外一律要登录。"""
+    if not auth.enabled():
+        return await call_next(request)
+
+    path = request.url.path
+    public = (
+        path in ("/", "/login", "/api/auth/login", "/api/auth/me", "/api/health")
+        or path.startswith("/static")
+        or path == "/favicon.ico"
+    )
+    if public:
+        return await call_next(request)
+
+    if not auth.read_token(request.cookies.get(auth.COOKIE_NAME, "")):
+        return JSONResponse({"detail": "请先登录"}, status_code=401)
+    return await call_next(request)
 
 # 允许的音频/视频扩展名：上传时校验，避免任意文件落盘
 ALLOWED_EXT = {
@@ -87,6 +144,14 @@ def _run_task(task: Task):
         task.output_path = result.output_path
         task.degraded = result.degraded
         task.progress = 1.0
+        # 按音频实际时长记用量，防「一次传 3 小时」刷爆演示站
+        try:
+            dur = (result.transcript.segments[-1].end_ms / 1000.0
+                   if result.transcript.segments and result.transcript.has_timing else 0)
+            if task.owner and dur > 0:
+                auth.USAGE.add_seconds(task.owner, dur)
+        except Exception:
+            pass
         QUEUE.emit(task, {
             "stage": "done", "msg": f"完成：{Path(result.output_path).name}",
             "status": "done", "output": result.output_path,
@@ -124,6 +189,57 @@ def index():
     if not f.exists():
         return HTMLResponse("<h1>缺少 web/static/index.html</h1>", status_code=500)
     return HTMLResponse(f.read_text(encoding="utf-8"))
+
+
+# ---------------------------------------------------------------- 登录
+
+
+class LoginReq(BaseModel):
+    username: str = "guest"
+    password: str = ""
+
+
+@app.post("/api/auth/login")
+def api_login(req: LoginReq, request: Request):
+    if not auth.enabled():
+        return {"ok": True, "enabled": False, "user": "local", "role": "admin"}
+    user = auth.check_password(req.username or "guest", req.password or "")
+    if not user:
+        # 故意不区分「用户不存在」和「密码错」
+        raise HTTPException(401, "用户名或密码不正确")
+    token = auth.issue_token(user)
+    resp = JSONResponse({
+        "ok": True, "enabled": True,
+        "user": user.name, "role": user.role,
+        "quota": auth.USAGE.summary(user),
+    })
+    secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+    resp.set_cookie(
+        auth.COOKIE_NAME, token,
+        max_age=auth.TOKEN_TTL, httponly=True, samesite="lax", secure=secure, path="/",
+    )
+    return resp
+
+
+@app.post("/api/auth/logout")
+def api_logout():
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie(auth.COOKIE_NAME, path="/")
+    return resp
+
+
+@app.get("/api/auth/me")
+def api_me(request: Request):
+    if not auth.enabled():
+        return {"enabled": False, "user": "local", "role": "admin",
+                "quota": {"role": "admin", "unlimited": True}}
+    u = auth.read_token(request.cookies.get(auth.COOKIE_NAME, ""))
+    # 未登录时回 200 + user:null，而不是 401：
+    # 这是「查询登录状态」的正常结果，用 401 会让浏览器控制台报红、干扰排查。
+    if not u:
+        return {"enabled": True, "user": None, "role": None, "quota": None}
+    return {"enabled": True, "user": u.name, "role": u.role,
+            "quota": auth.USAGE.summary(u)}
 
 
 # ---------------------------------------------------------------- 环境与模型
@@ -263,6 +379,13 @@ def _mk_task(source_display: str, source_type: str, engine: str, fmt: str,
     return t
 
 
+def _submit(t: Task, user: auth.User):
+    """提交任务 + 记一次用量。额度在 require_quota 里已校验过。"""
+    t.owner = user.name
+    auth.USAGE.add_task(user.name)
+    QUEUE.submit(t)
+
+
 class UrlReq(BaseModel):
     url: str
     engine: str
@@ -279,7 +402,8 @@ class UrlReq(BaseModel):
 
 
 @app.post("/api/transcribe/url")
-def api_transcribe_url(req: UrlReq):
+def api_transcribe_url(req: UrlReq, request: Request):
+    user = require_quota(request)
     url = (req.url or "").strip()
     if not url or not pipeline.is_link(url):
         raise HTTPException(400, "请输入有效的网页链接")
@@ -300,8 +424,8 @@ def api_transcribe_url(req: UrlReq):
         "engine_kwargs": ek,
         "cookies": req.cookies or {},
     })
-    QUEUE.submit(t)
-    return {"id": t.id}
+    _submit(t, user)
+    return {"id": t.id, "quota": auth.USAGE.summary(user)}
 
 
 @app.post("/api/transcribe/file")
@@ -318,7 +442,9 @@ async def api_transcribe_file(
     asr_base_url: str = Form(""),
     local_model: str = Form(""),
     keep_media: bool = Form(True),
+    request: Request = None,
 ):
+    user = require_quota(request)
     name = file.filename or "upload"
     ext = Path(name).suffix.lower()
     if ext not in ALLOWED_EXT:
@@ -366,28 +492,42 @@ async def api_transcribe_file(
         "clean_api_key": clean_api_key or None,
         "engine_kwargs": ek,
     }, tid=tid_early)
-    QUEUE.submit(t)
-    return {"id": t.id, "size": size}
+    _submit(t, user)
+    return {"id": t.id, "size": size, "quota": auth.USAGE.summary(user)}
+
+
+def _visible(user: auth.User, t: Task) -> bool:
+    """admin 看全部；guest 只看自己的。
+
+    老数据（owner 为空）在多账户模式下归给 admin，guest 看不到，
+    避免历史任务泄露给访客。
+    """
+    if user.is_admin:
+        return True
+    return bool(t.owner) and t.owner == user.name
+
+
+def _get_owned(tid: str, user: auth.User) -> Task:
+    t = QUEUE.get(tid)
+    if not t or not _visible(user, t):
+        raise HTTPException(404, "任务不存在")
+    return t
 
 
 @app.get("/api/tasks")
-def api_tasks():
-    return {"tasks": [t.public() for t in QUEUE.list()]}
+def api_tasks(request: Request):
+    u = require_user(request)
+    return {"tasks": [t.public() for t in QUEUE.list() if _visible(u, t)]}
 
 
 @app.get("/api/tasks/{tid}")
-def api_task(tid: str):
-    t = QUEUE.get(tid)
-    if not t:
-        raise HTTPException(404, "任务不存在")
-    return t.public()
+def api_task(tid: str, request: Request):
+    return _get_owned(tid, require_user(request)).public()
 
 
 @app.get("/api/tasks/{tid}/events")
-def api_task_events(tid: str):
-    t = QUEUE.get(tid)
-    if not t:
-        raise HTTPException(404, "任务不存在")
+def api_task_events(tid: str, request: Request):
+    t = _get_owned(tid, require_user(request))
     q = QUEUE.subscribe(t)
 
     def gen():
@@ -413,21 +553,21 @@ def api_task_events(tid: str):
 
 
 @app.post("/api/tasks/{tid}/cancel")
-def api_task_cancel(tid: str):
+def api_task_cancel(tid: str, request: Request):
+    _get_owned(tid, require_user(request))
     return {"ok": QUEUE.cancel(tid)}
 
 
 @app.delete("/api/tasks/{tid}")
-def api_task_delete(tid: str):
+def api_task_delete(tid: str, request: Request):
+    _get_owned(tid, require_user(request))
     return {"ok": QUEUE.delete(tid)}
 
 
 @app.get("/api/tasks/{tid}/content")
-def api_task_content(tid: str):
+def api_task_content(tid: str, request: Request = None):
     """取转录结果全文 + 分段，供播放器/编辑器/对话使用。"""
-    t = QUEUE.get(tid)
-    if not t:
-        raise HTTPException(404, "任务不存在")
+    t = _get_owned(tid, require_user(request))
     if not t.output_path or not os.path.exists(t.output_path):
         raise HTTPException(404, "结果文件不存在")
     suffix = Path(t.output_path).suffix.lower()
@@ -474,14 +614,14 @@ def _srt_ms(s: str) -> int:
 
 
 @app.get("/api/tasks/{tid}/download")
-def api_task_download(tid: str, fmt: str = ""):
-    t = QUEUE.get(tid)
-    if not t or not t.output_path or not os.path.exists(t.output_path):
+def api_task_download(tid: str, fmt: str = "", request: Request = None):
+    t = _get_owned(tid, require_user(request))
+    if not t.output_path or not os.path.exists(t.output_path):
         raise HTTPException(404, "结果文件不存在")
     path = Path(t.output_path)
     if fmt and fmt != path.suffix.lstrip("."):
         # 现场转换格式
-        content = api_task_content(tid)
+        content = api_task_content(tid, request)
         segs = [Segment(s["text"], s["start_ms"], s["end_ms"]) for s in content["segments"]]
         if not segs:
             segs = [Segment(content["text"])]
@@ -497,11 +637,9 @@ class EditReq(BaseModel):
 
 
 @app.post("/api/tasks/{tid}/save")
-def api_task_save(tid: str, req: EditReq):
+def api_task_save(tid: str, req: EditReq, request: Request = None):
     """保存用户在线编辑后的分段。"""
-    t = QUEUE.get(tid)
-    if not t:
-        raise HTTPException(404, "任务不存在")
+    t = _get_owned(tid, require_user(request))
     segs = [Segment(s.get("text", ""), int(s.get("start_ms", -1)),
                     int(s.get("end_ms", -1))) for s in req.segments]
     tr = Transcript(segs, source=t.source)
@@ -749,11 +887,9 @@ def api_test_connection(req: TestReq):
 
 
 @app.get("/api/audio/{tid}")
-def api_audio(tid: str):
+def api_audio(tid: str, request: Request = None):
     """提供原始媒体供播放器使用。"""
-    t = QUEUE.get(tid)
-    if not t:
-        raise HTTPException(404, "任务不存在")
+    t = _get_owned(tid, require_user(request))
     rt = getattr(t, "_runtime", {}) or {}
     # 上传文件已持久化到 UPLOAD_DIR 时按 id 找回（服务重启后 _runtime 已空）
     path = rt.get("upload_path") or ""
@@ -778,15 +914,18 @@ def main():
     import uvicorn
 
     p = argparse.ArgumentParser(description="audio-transcribe web")
-    p.add_argument("--host", default="127.0.0.1")
-    p.add_argument("--port", type=int, default=8787)
+    # 云平台（Railway / Render / Fly）通过 $PORT 注入端口，且要求监听 0.0.0.0
+    p.add_argument("--host", default=os.environ.get("AT_HOST", "127.0.0.1"))
+    p.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8787")))
     p.add_argument("--concurrency", type=int, default=int(os.environ.get("AT_CONCURRENCY", "1")))
     p.add_argument("--no-browser", action="store_true")
     a = p.parse_args()
 
     QUEUE.concurrency = max(1, min(8, a.concurrency))
 
-    if not a.no_browser:
+    # 容器/服务器上不弹浏览器：监听非回环地址时自动关掉
+    no_browser = a.no_browser or a.host not in ("127.0.0.1", "localhost")
+    if not no_browser:
         import threading
         import webbrowser
         threading.Timer(1.2, lambda: webbrowser.open(f"http://{a.host}:{a.port}")).start()

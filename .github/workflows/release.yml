@@ -1,0 +1,52 @@
+name: Release
+
+# 打 tag（v1.4.0 这种）时自动构建 Windows 绿色包并附到 Release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-zip:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 构建绿色包
+        run: python packaging/build_windows.py
+
+      - name: 记录产物信息
+        shell: bash
+        run: |
+          ls -lh packaging/dist/
+          echo "SIZE=$(du -sm packaging/dist/*.zip | cut -f1)" >> $GITHUB_ENV
+
+      - name: 上传到 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: packaging/dist/audio-transcribe-win64.zip
+          body: |
+            ## 下载
+
+            **Windows 用户**：下载下面的 `audio-transcribe-win64.zip`，
+            解压后双击「启动.bat」即可，**不用装 Python，不用装 ffmpeg**。
+
+            macOS / Linux 用户：用 pip 装（见 README），
+            或 `curl -fsSL https://weiyinerzui.github.io/audio-transcribe/install.sh | bash`
+
+            ## 这次改了什么
+
+            见下方 commit 列表。
+
+            完整说明：https://github.com/weiyinerzui/audio-transcribe/releases/tag/${{ github.ref_name }}
+          draft: false
+          generate_release_notes: true
+          fail_on_unmatched_files: true
