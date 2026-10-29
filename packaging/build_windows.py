@@ -40,6 +40,17 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+# Windows 控制台默认 cp1252/cp936，直接 print 中文会抛
+# UnicodeEncodeError: 'charmap' codec can't encode ...
+# 必须在任何输出之前把标准流切成 UTF-8。
+# 这是 CI 在 windows-latest 上失败的真实原因（不是路径问题）。
+if os.name == "nt":
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, OSError):
+            pass
+
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "packaging" / "dist"
 NAME = "audio-transcribe-win64"
@@ -70,7 +81,13 @@ PIP_PACKAGES = [
 
 
 def log(msg: str):
-    print(f"[build] {msg}", flush=True)
+    """打印日志。即使 reconfigure 没生效也不让编码问题中断构建。"""
+    text = f"[build] {msg}"
+    try:
+        print(text, flush=True)
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", "ascii") or "ascii"
+        print(text.encode(enc, "replace").decode(enc, "replace"), flush=True)
 
 
 def long_path(p: Path) -> str:
