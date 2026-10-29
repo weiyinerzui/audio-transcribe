@@ -20,33 +20,91 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: 构建绿色包
+      - name: 构建完整版（含 ffmpeg）
         run: python packaging/build_windows.py
+
+      - name: 构建轻量版（不含 ffmpeg）
+        run: python packaging/build_windows.py --slim
 
       - name: 记录产物信息
         shell: bash
         run: |
           ls -lh packaging/dist/
-          echo "SIZE=$(du -sm packaging/dist/*.zip | cut -f1)" >> $GITHUB_ENV
+          echo "SIZE=$(du -sm packaging/dist/audio-transcribe-win64.zip | cut -f1)" >> "$GITHUB_ENV"
+          echo "SIZE_SLIM=$(du -sm packaging/dist/audio-transcribe-win64-slim.zip | cut -f1)" >> "$GITHUB_ENV"
+
+      - name: 校验产物完整
+        shell: bash
+        run: |
+          set -e
+          python - <<'PY'
+          import zipfile, sys
+
+          need = {
+              "packaging/dist/audio-transcribe-win64.zip": [
+                  "启动.bat", "停止.bat", "使用说明.txt",
+                  "app/web/server.py", "python/python.exe",
+                  "bin/ffmpeg.exe", "bin/ffprobe.exe",
+              ],
+              "packaging/dist/audio-transcribe-win64-slim.zip": [
+                  "启动.bat", "停止.bat", "使用说明.txt",
+                  "app/web/server.py", "python/python.exe",
+                  "bin/README.txt",
+              ],
+          }
+          bad = False
+          for path, items in need.items():
+              z = zipfile.ZipFile(path)
+              broken = z.testzip()
+              if broken:
+                  print(f"✗ {path}: CRC 错误 {broken}"); bad = True
+              names = set(z.namelist())
+              for it in items:
+                  if it not in names:
+                      print(f"✗ {path}: 缺 {it}"); bad = True
+              # slim 版不应该有 ffmpeg
+              if "slim" in path and any(n.startswith("bin/ffmpeg") for n in names):
+                  print(f"✗ {path}: 不该含 ffmpeg"); bad = True
+              print(f"✓ {path}: {len(names)} 个条目，CRC 正常")
+          sys.exit(1 if bad else 0)
+          PY
 
       - name: 上传到 Release
         uses: softprops/action-gh-release@v2
         with:
-          files: packaging/dist/audio-transcribe-win64.zip
+          files: |
+            packaging/dist/audio-transcribe-win64.zip
+            packaging/dist/audio-transcribe-win64-slim.zip
           body: |
             ## 下载
 
-            **Windows 用户**：下载下面的 `audio-transcribe-win64.zip`，
-            解压后双击「启动.bat」即可，**不用装 Python，不用装 ffmpeg**。
+            Windows 用户，二选一：
 
-            macOS / Linux 用户：用 pip 装（见 README），
-            或 `curl -fsSL https://weiyinerzui.github.io/audio-transcribe/install.sh | bash`
+            | 版本 | 大小 | 说明 |
+            |---|---|---|
+            | `audio-transcribe-win64.zip` | 约 125 MB | **推荐**。自带 ffmpeg，解压双击即用，全程不用联网 |
+            | `audio-transcribe-win64-slim.zip` | 约 35 MB | 网慢选这个。首次用时在界面「环境检查」里点一下装 ffmpeg（约 80 MB，只需一次） |
+
+            两个版本都**不用装 Python**。解压后双击「启动.bat」，
+            浏览器会自动打开 `http://127.0.0.1:8787`。
+
+            数据存在解压目录下的 `data\`，整个文件夹拷到别的电脑照样能用。
+
+            macOS / Linux 用户：
+
+            ```bash
+            curl -fsSL https://weiyinerzui.github.io/audio-transcribe/install.sh | bash
+            ```
+
+            ## 文档
+
+            - 命令行版教程：https://weiyinerzui.github.io/audio-transcribe/
+            - Web 版保姆级教程：https://weiyinerzui.github.io/audio-transcribe/web-tutorial.html
+            - 部署 / 访问控制 / 限额：https://github.com/weiyinerzui/audio-transcribe/blob/main/docs/deploy.md
 
             ## 这次改了什么
 
             见下方 commit 列表。
-
-            完整说明：https://github.com/weiyinerzui/audio-transcribe/releases/tag/${{ github.ref_name }}
           draft: false
           generate_release_notes: true
           fail_on_unmatched_files: true
