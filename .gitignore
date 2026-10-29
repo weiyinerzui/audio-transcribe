@@ -36,3 +36,9 @@ secrets.json
 # 系统垃圾
 .DS_Store
 Thumbs.db
+
+# Web 运行时（默认数据目录在 ~/.audio-transcribe，这里兜底）
+data/
+outputs/
+uploads/
+models/

@@ -1,0 +1,11 @@
+# Web 界面依赖（可选）
+#
+# 只装 CLI 的话不需要这些；只有要跑 Web 界面时才装：
+#   pip install -r requirements-web.txt
+#   python web/server.py
+
+-r requirements.txt
+
+fastapi>=0.110
+uvicorn>=0.27
+python-multipart>=0.0.9

@@ -23,6 +23,7 @@ import os
 import re
 import sys
 import time
+from typing import Callable
 
 import requests
 
@@ -300,10 +301,13 @@ def _split_chunks(text: str, limit: int) -> list[str]:
 
 def clean_segments_batch(segments: list[Segment], api_key: str | None = None,
                          model: str | None = None, base_url: str | None = None,
-                         verbose: bool = True) -> list[Segment]:
+                         verbose: bool = True,
+                         on_progress: Callable[[int, int, str], None] | None = None,
+                         ) -> list[Segment]:
     """分批编号清理，严格保留每段的起止时间。
 
     单批失败只保留该批原文，不影响其他批次。
+    on_progress(current, total, label) 用于对外上报进度（CLI 忽略，Web 转 SSE）。
     """
     api_key, model, base_url = _resolve_gateway(api_key, model, base_url)
 
@@ -335,6 +339,8 @@ def clean_segments_batch(segments: list[Segment], api_key: str | None = None,
             cleaned.append(Segment(item, seg.start_ms, seg.end_ms))
         if verbose:
             print(f"  清理第 {bi}/{total_batches} 批完成", file=sys.stderr)
+        if on_progress:
+            on_progress(bi, total_batches, "批")
 
     if failed == total_batches:
         raise RuntimeError(f"全部 {total_batches} 批清理失败")
@@ -342,7 +348,8 @@ def clean_segments_batch(segments: list[Segment], api_key: str | None = None,
 
 def clean_fulltext(text: str, api_key: str | None = None, model: str | None = None,
                    base_url: str | None = None, chunk_limit: int | None = None,
-                   verbose: bool = True) -> str:
+                   verbose: bool = True,
+                   on_progress: Callable[[int, int, str], None] | None = None) -> str:
     """整篇润色（用于无时间戳的纯文稿）。
 
     按段落分块逐块清理；单块失败只保留该块原文，不影响其他块。
@@ -363,6 +370,8 @@ def clean_fulltext(text: str, api_key: str | None = None, model: str | None = No
             out.append(cleaned)
             if verbose:
                 print(f"  清理第 {i}/{len(chunks)} 块完成", file=sys.stderr)
+            if on_progress:
+                on_progress(i, len(chunks), "块")
         except (RuntimeError, requests.RequestException) as exc:
             failed += 1
             out.append(chunk)
@@ -400,6 +409,7 @@ def clean_with_rules(text: str) -> str:
 
 def clean_transcript(transcript: Transcript, mode: str = "llm",
                      fulltext: bool = False, chunk_limit: int | None = None,
+                     on_progress: Callable[[int, int, str], None] | None = None,
                      **kwargs) -> Transcript:
     """清理整份转录结果。
 
@@ -425,10 +435,12 @@ def clean_transcript(transcript: Transcript, mode: str = "llm",
             return transcript
         try:
             if transcript.has_timing and not fulltext:
-                cleaned = clean_segments_batch(transcript.segments, **kwargs)
+                cleaned = clean_segments_batch(transcript.segments, on_progress=on_progress,
+                                               **kwargs)
             else:
                 cleaned = [Segment(clean_fulltext(transcript.full_text,
-                                                  chunk_limit=chunk_limit, **kwargs))]
+                                                  chunk_limit=chunk_limit,
+                                                  on_progress=on_progress, **kwargs))]
             return Transcript(cleaned, source=transcript.source)
         except (RuntimeError, requests.RequestException) as exc:
             # 清理网关不可达时不要让整次转录失败：降级为本地规则清理

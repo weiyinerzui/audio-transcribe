@@ -10,15 +10,20 @@
 
 <a href="https://weiyinerzui.github.io/audio-transcribe/"><img src="https://img.shields.io/badge/在线教程-GitHub%20Pages-4f9cf9?style=flat-square" alt="在线教程"></a>
 <a href="docs/media/tutorial.mp4"><img src="https://img.shields.io/badge/视频教程-57s%20MP4-3fb950?style=flat-square" alt="视频教程"></a>
+<a href="docs/web.md"><img src="https://img.shields.io/badge/Web%20界面-浏览器里点几下-a371f7?style=flat-square" alt="Web 界面"></a>
 
 ```
 本地文件 / 网页链接
+   │
+   ├──▶ CLI：python transcribe.py <输入>          全自动，stdout 只有结果路径
+   │
+   └──▶ Web：python web/server.py → localhost:8787  拖文件、贴链接、看进度、改文稿、问 AI
    │
    ▼
 ┌──────────────┐   ┌────────────────────────────┐   ┌─────────────────────┐
 │  取音频       │──▶│  云转录（免费，毫秒级时间戳） │──▶│  文稿清理（可选）      │
 │  ffmpeg 抽音轨 │   │  bcut / jianying / 硅基流动  │   │  LLM 或本地正则       │
-│  B站直连 API  │   │  自动挑选可用通道            │   │  时间轴严格保留       │
+│  B站直连 API  │   │  本地 whisper（可选）        │   │  时间轴严格保留       │
 │  yt-dlp 兜底  │   └────────────────────────────┘   └──────────┬──────────┘
 └──────────────┘                                               │
                                                                ▼
@@ -32,13 +37,15 @@
 | 特性 | 说明 |
 |---|---|
 | **零配置可用** | 不配任何 key：bcut（B 站必剪自家接口，免登录）直接跑，中文识别准，时间戳精确到毫秒 |
-| **三个引擎可换** | 免费 bcut / 免费 jianying（剪映，尽力而为）/ 硅基流动 Qwen3-ASR（要 key，纯文稿） |
+| **六个引擎可换** | 免费 bcut / jianying；硅基流动、任意 OpenAI Whisper 兼容 ASR（要 key）；faster-whisper、MLX（本地离线） |
 | **链接直出文稿** | B站（含分P）、微博、YouTube 开箱即用；抖音/小红书/快手支持 Cookie 注入 |
 | **默认清理文稿** | 自动删「嗯/啊/那个/就是」、折叠「今天今天→今天」、修同音错字，**SRT 时间轴原样保留** |
 | **清理不联网也行** | `--clean rules` 纯本地正则，不调用任何 LLM；LLM 网关挂了也自动降级，不会让整次转录失败 |
 | **不跑本地模型** | 转录全部走云端免费接口，无 GPU 的笔记本、NAS、树莓派都能处理长音频 |
 | **跨 agent 通用** | 标准 SKILL.md frontmatter，装到各家 skills 目录即可识别，无需改代码 |
 | **可脚本串联** | `stdout` 只输出最终文件路径，进度与警告走 `stderr`，方便塞进 pipeline |
+| **有 Web 界面** | `python web/server.py` 起来后浏览器里拖文件、贴链接、看进度、改文稿、听录音对时间、问 AI，全都行 |
+| **Key 不进服务端** | API Key 只存浏览器 localStorage，服务端只透传不落盘，用 Docker 或多人机器也不怕 |
 
 ## 环境要求
 
@@ -254,8 +261,20 @@ python3 transcribe.py <输入文件或链接> --engine {bcut,jianying,siliconflo
 | `bcut` | 无需 key（免费） | ✅ | srt / json / txt | B 站必剪接口，**默认首选**，稳定、中文准 |
 | `jianying` | 无需 key（免费） | ✅ | srt / json / txt | 剪映接口，**尽力而为**：依赖第三方签名服务 `asrtools-update.bkfeng.top`，可能随时失效 |
 | `siliconflow` | `SILICONFLOW_API_KEY` | ❌ | txt / json | `Qwen/Qwen3-ASR-1.7B`，接口只返回整段文稿，**出不了 SRT** |
+| `openai-asr` | `OPENAI_ASR_API_KEY` | ✅ | srt / json / txt | 任意兼容 `/audio/transcriptions` 的服务：OpenAI、Groq、硅基流动、自建 |
+| `faster-whisper` | 无需 key（本地） | ✅ | srt / json / txt | 本地推理，跨平台，有 GPU 自动用 CUDA |
+| `mlx-whisper` | 无需 key（本地） | ✅ | srt / json / txt | 本地推理，**仅 Apple Silicon**，比 faster-whisper 快 2-4 倍 |
 
 > 无时间戳的组合会自动降级为 `txt` 并提示，不会静默产出坏字幕。
+
+本地引擎要先下载模型（`python web/server.py` 的「本地模型」页，或 `huggingface-cli download`）。模型存在 `~/.audio-transcribe/models/`，下完可断网转录。
+
+```bash
+# 本地转录示例
+python transcribe.py 访谈.mp4 --engine faster-whisper
+python transcribe.py 访谈.mp4 --engine mlx-whisper          # 仅 Mac
+python transcribe.py 访谈.mp4 --engine openai-asr --model whisper-large-v3-turbo
+```
 
 ## 支持的链接平台
 
@@ -350,6 +369,36 @@ export NINEROUTER_API_KEY="sk-xxxxxxxx"
 python3 transcribe.py 视频.mp4 --engine bcut -o 字幕.srt 2>/dev/null   # 只拿路径
 ```
 
+## Web 界面
+
+不想敲命令的话，浏览器里点几下就行：
+
+```bash
+pip install -r requirements-web.txt
+python web/server.py          # 自动打开 http://127.0.0.1:8787
+```
+
+能做的事：
+
+- **拖文件或贴链接**：本地音视频、B站/YouTube/抖音/小红书等链接
+- **看进度**：四阶段进度条 + 可滚动日志，随时取消
+- **听录音对文稿**：播放器跟转录稿同步高亮，点时间戳跳转
+- **在线改错字**：就地编辑，改完直接导出 SRT / TXT
+- **生成总结 / 就文稿提问**：长文稿自动走 BM25 检索，答案带可点击时间戳
+- **环境检测与一键修复**：缺什么装什么，ffmpeg 静态版下到用户目录不用 root
+- **本地模型管理**：界面里下载 whisper 模型，下完断网也能转录
+
+**API Key 只存浏览器 localStorage，服务端只透传不落盘。** 默认只监听 `127.0.0.1`，别的机器连不上。
+
+Docker 也行：
+
+```bash
+docker build -t audio-transcribe .
+docker run --rm -p 127.0.0.1:8787:8787 -v at-data:/data audio-transcribe
+```
+
+完整说明见 [docs/web.md](docs/web.md)。
+
 ## 项目结构
 
 ```
@@ -357,21 +406,37 @@ audio-transcribe/
 ├── SKILL.md              # agent 入口：核心用法、引擎选择、关键约束、路由表
 ├── README.md
 ├── LICENSE               # MIT
-├── requirements.txt
-├── transcribe.py         # 统一 CLI 入口（参数解析、流程编排、输出兜底）
+├── requirements.txt      # CLI 依赖
+├── requirements-web.txt  # Web 依赖（可选）
+├── Dockerfile            # 容器部署（可选）
+├── transcribe.py         # CLI 入口（只做参数解析，流程委托 pipeline）
+├── pipeline.py           # 唯一流水线：CLI 与 Web 共用，带进度事件与取消
 ├── audio.py              # ffmpeg 抽音轨 / 转码成 16k 单声道
 ├── downloader.py         # 多平台链接 → 本地音频（B站 API + yt-dlp 分层）
 ├── cleaner.py            # 文稿清理（LLM 逐段编号 / 本地正则 / 跳过）
 ├── subtitle.py           # Segment / Transcript 数据模型与 SRT/JSON/TXT 导出
+├── env_check.py          # 环境检测与分级修复（不执行 sudo）
+├── model_manager.py      # 本地模型目录、下载、删除
+├── taskqueue.py          # 任务队列（并发可配、SSE 事件、取消、历史持久化）
+├── web/
+│   ├── server.py         # FastAPI 服务（只监听 127.0.0.1）
+│   └── static/index.html # 单页前端，零构建步骤
 ├── references/           # 详细文档，agent 按需加载（不进主上下文）
 │   ├── platforms.md      # 平台支持矩阵、Cookie 配置、分P
 │   ├── cleaning.md       # 三种清理模式、网关配置、长音频稳定性
 │   └── troubleshooting.md# 报错排查、失败降级路径、依赖安装
+├── docs/
+│   ├── index.html        # 图文教程（GitHub Pages）
+│   ├── web.md            # Web 界面文档
+│   └── media/tutorial.mp4# 视频教程
 └── engines/
     ├── base.py           # 引擎接口约定
     ├── bcut.py           # B 站必剪免费接口（移植 VideoCaptioner 的 BcutASR）
     ├── jianying.py       # 剪映接口（依赖第三方签名服务）
-    └── siliconflow.py    # 硅基流动 Qwen3-ASR
+    ├── siliconflow.py    # 硅基流动 Qwen3-ASR
+    ├── openai_asr.py     # 任意 OpenAI Whisper 兼容 ASR
+    ├── faster_whisper.py # 本地推理（跨平台）
+    └── mlx_whisper.py    # 本地推理（仅 Apple Silicon）
 ```
 
 `SKILL.md` 只保留 agent 必须常读的内容（约 3 KB），平台、清理、排错等细节放在 `references/`，
