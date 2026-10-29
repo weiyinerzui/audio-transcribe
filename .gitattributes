@@ -1,0 +1,6 @@
+# Windows 批处理必须是 CRLF，否则 cmd.exe 解析异常
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 其余按平台默认
+*.sh text eol=lf

@@ -63,7 +63,14 @@ PBS_PY_SERIES = "3.12"   # 固定 3.12：生态 wheel 最全，且 FastAPI 全�
 PBS_URL = os.environ.get("PBS_URL", "").strip()  # 可手动指定，绕过 API 查询
 _PBS_EXPECT = [0]   # resolve_python_url() 顺带记下期望字节数，供 download 校验
 
-FFMPEG_URL = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+# ffmpeg 静态版（gyan.dev）单个 exe 就上百 MB，打出来包体 139MB。
+# BtbN 的 shared 构建把编解码器拆进 DLL，压缩包 83MB，
+# 代价是 bin/ 下必须有那些 DLL，所以启动脚本要把 bin/ 放进 PATH。
+# 只取 lGPL 版：不含 GPL 组件，分发限制更少，本项目用不到那些编码器。
+FFMPEG_URL = (
+    "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/"
+    "ffmpeg-master-latest-win64-lgpl-shared.zip"
+)
 
 # Windows 长路径前缀（\\?\）。写成常量而不是内联字符串，
 # 免得反斜杠在源码里被转义成一排问号。
@@ -341,14 +348,33 @@ def build(clean: bool = True, skip_pip: bool = False):
     ff_zip = download(FFMPEG_URL, cache / "ffmpeg-win64.zip")
     bin_dir = staging / "bin"
     bin_dir.mkdir(exist_ok=True)
+
     with zipfile.ZipFile(ff_zip) as z:
-        for name in ("ffmpeg.exe", "ffprobe.exe"):
-            hit = [n for n in z.namelist() if n.endswith("/bin/" + name)]
-            if not hit:
-                raise SystemExit(f"ffmpeg 包里没找到 {name}")
-            with z.open(hit[0]) as src, open(bin_dir / name, "wb") as dst:
-                shutil.copyfileobj(src, dst)
-            log(f"  {name} → {bin_dir / name}")
+        names = z.namelist()
+        # 只取 /bin/ 下的 exe 和 dll。shared 构建缺了 dll 就跑不起来，
+        # 所以这里必须整目录搬，不能只挑两个 exe。
+        wanted = [
+            n for n in names
+            if "/bin/" in n and n.lower().endswith((".exe", ".dll"))
+        ]
+        if not wanted:
+            raise SystemExit("ffmpeg 包里 /bin/ 下没有 exe/dll，压缩包结构变了？")
+
+        got = set()
+        for n in wanted:
+            fname = n.rsplit("/", 1)[-1]
+            if fname.lower() in ("ffmpeg.exe", "ffprobe.exe") or fname.lower().endswith(".dll"):
+                with z.open(n) as src, open(bin_dir / fname, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
+                got.add(fname)
+
+        for need in ("ffmpeg.exe", "ffprobe.exe"):
+            if need not in got:
+                raise SystemExit(f"ffmpeg 包里没找到 {need}")
+        n_dll = len([g for g in got if g.lower().endswith(".dll")])
+        log(f"  ffmpeg.exe / ffprobe.exe + {n_dll} 个 DLL → {bin_dir}")
+        if n_dll == 0:
+            log("  ⚠ 没有 DLL，若下载到的是静态版则正常")
 
     # ---- 4. 应用代码（用 git archive 拿干净副本，不含 .git）
     log("拷贝应用代码")

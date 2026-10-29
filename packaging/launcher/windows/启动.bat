@@ -34,7 +34,16 @@ REM ---- 2. 数据目录跟着包走
 set "AUDIO_TRANSCRIBE_HOME=%~dp0data"
 if not exist "%AUDIO_TRANSCRIBE_HOME%" mkdir "%AUDIO_TRANSCRIBE_HOME%"
 
+REM bin\ 必须进 PATH：ffmpeg 用的是 shared 构建，依赖同目录下的 DLL
 set "PATH=%~dp0bin;%~dp0python;%PATH%"
+
+REM 快速验证 ffmpeg 真的能跑（缺 DLL 时会直接失败而不是静默降级）
+"%~dp0bin\ffmpeg.exe" -version >nul 2>&1
+if errorlevel 1 (
+    echo [警告] bin\ffmpeg.exe 无法运行，可能是缺 DLL 或被安全软件拦截。
+    echo        转录会失败，建议重新完整解压。
+    echo.
+)
 set "PYTHONIOENCODING=utf-8"
 set "PYTHONUTF8=1"
 

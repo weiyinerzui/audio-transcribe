@@ -32,6 +32,9 @@ audio-transcribe  使用说明
   支持的格式：mp3 wav m4a flac aac ogg opus wma
               mp4 mkv mov avi webm flv ts m4v
 
+  ⚠ bin 文件夹里的 ffmpeg.exe、ffprobe.exe 和那些 .dll
+    是这个软件的一部分，不能删，删了就转不了音视频。
+
 方式二：网页链接
   点「新建转录」→「网页链接」→ 把 B 站等平台的
   视频地址粘进去 → 点「开始」
