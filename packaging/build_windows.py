@@ -282,6 +282,79 @@ def install_deps(pyexe: Path, staging: Path) -> None:
     raise SystemExit("pip 安装失败（三个源都试过了）")
 
 
+def slim_python(staging: Path) -> None:
+    """砍掉包里用不到的 Python 标准库和构建残留。
+
+    python-build-standalone 是「完整」发行版，自带 test 套件、
+    idlelib、ensurepip、pip 的 vendored 依赖等，加起来几十 MB，
+    用户永远用不到。绿色包体积敏感，全删。
+    """
+    log("精简 Python 运行时")
+    before = sum(f.stat().st_size for f in walk_files(staging) if f.is_file())
+
+    lib = staging / "python" / "Lib"
+    drop_dirs = [
+        "test",              # 标准库测试套件，最大的一块
+        "idlelib",           # IDLE，没有界面
+        "ensurepip",         # 用户侧不跑 pip
+        "lib2to3",           # Python 2 语法转换，早废弃
+        "turtledemo",
+        "ensurepip/_bundled",  # 里面是 pip/setuptools 的 wheel 文件，每个几 MB
+        "site-packages/pip", # 用户侧装不了东西，pip 本身不需要
+        "site-packages/setuptools",
+        "site-packages/pkg_resources",
+        "site-packages/wheel",
+    ]
+    for rel in drop_dirs:
+        d = lib / rel
+        if d.is_dir():
+            rmtree_force(d)
+
+    # tkinter 相关（有 GUI 的包里才有，删了省 10MB+）
+    for rel in ("tkinter", "turtle.py", "turtledemo"):
+        d = lib / rel
+        if d.is_dir():
+            rmtree_force(d)
+        elif d.is_file():
+            d.unlink(missing_ok=True)
+    dll = staging / "python" / "DLLs"
+    if dll.is_dir():
+        for pat in ("_tkinter.pyd", "tcl86t.dll", "tk86t.dll"):
+            for f in dll.glob(pat):
+                f.unlink(missing_ok=True)
+
+    # 测试与缓存
+    for pat in ("**/tests", "**/test"):
+        for d in staging.glob(pat):
+            if d.is_dir() and d.name in ("tests", "test"):
+                rmtree_force(d)
+
+    after = sum(f.stat().st_size for f in walk_files(staging) if f.is_file())
+    log(f"  {before / 1024 / 1024:.1f} MB → {after / 1024 / 1024:.1f} MB"
+        f"（省 {(before - after) / 1024 / 1024:.1f} MB）")
+
+
+def report_sizes(staging: Path) -> None:
+    """按顶层目录报告体积，压缩前先看清到底是哪一块大。"""
+    log("各部分体积：")
+    rows = []
+    for d in sorted(staging.iterdir()):
+        if d.is_dir():
+            sz = sum(f.stat().st_size for f in walk_files(d) if f.is_file())
+        else:
+            sz = d.stat().st_size
+        rows.append((sz, d.name, True))
+        # bin/ 底下是大头，单列出来看
+        if d.is_dir() and d.name == "bin":
+            for f in sorted(d.iterdir(), key=lambda x: -x.stat().st_size)[:10]:
+                if f.is_file():
+                    rows.append((f.stat().st_size, f"   └ {f.name}", False))
+    total = sum(r[0] for r in rows if r[2])
+    for sz, name, _ in sorted(rows, key=lambda r: -r[0]):
+        log(f"  {sz / 1024 / 1024:8.1f} MB  {name}")
+    log(f"  {total / 1024 / 1024:8.1f} MB  合计（解压后）")
+
+
 def verify_deps(pyexe: Path, staging: Path) -> None:
     """真跑一次导入，别等用户双击了才发现缺包。"""
     log("自检：导入关键模块")
@@ -339,9 +412,12 @@ def build(clean: bool = True, skip_pip: bool = False):
         else:
             install_deps(pyexe, staging)
 
-    # ---- 2.5 自检：确认关键模块真的在里面
+    # ---- 2.5 自检：确认关键模块真的在里面（必须在精简之前跑）
     if not skip_pip and os.name == "nt":
         verify_deps(pyexe, staging)
+
+    # ---- 2.6 精简运行时（验证过能 import 了才敢删）
+    slim_python(staging)
 
     # ---- 3. ffmpeg
     log("处理 ffmpeg")
@@ -431,6 +507,7 @@ def build(clean: bool = True, skip_pip: bool = False):
         log(f"清理 {n_pyc} 个 .pyc")
 
     # ---- 6. 打包
+    report_sizes(staging)
     log("压缩")
     zip_path = OUT / f"{NAME}.zip"
     if zip_path.exists():
