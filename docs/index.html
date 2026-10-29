@@ -261,7 +261,7 @@ python3 --version
 <div class="cb"><div class="bar"><i></i><i></i><i></i><b>终端</b></div><pre>ffmpeg -version</pre></div>
 
 <figure>
-  <img src="img/07_verify.png" alt="验证 ffmpeg 与依赖">
+  <img loading="lazy" decoding="async" src="img/07_verify.png" alt="验证 ffmpeg 与依赖">
   <figcaption>三个命令都通过，说明环境就绪</figcaption>
 </figure>
 
@@ -423,7 +423,7 @@ ln -s ~/skills/audio-transcribe ~/.pi/agent/skills/audio-transcribe</pre></div>
 <h3>4.1 先看帮助</h3>
 
 <figure>
-  <img src="img/01_help.png" alt="--help 输出">
+  <img loading="lazy" decoding="async" src="img/01_help.png" alt="--help 输出">
   <figcaption>能看到这个界面，说明装好了</figcaption>
 </figure>
 
@@ -434,7 +434,7 @@ ln -s ~/skills/audio-transcribe ~/.pi/agent/skills/audio-transcribe</pre></div>
   <span class="v">-o</span> <span class="s">字幕.srt</span></pre></div>
 
 <figure>
-  <img src="img/02_run.png" alt="转录运行过程">
+  <img loading="lazy" decoding="async" src="img/02_run.png" alt="转录运行过程">
   <figcaption>三步进度：(1/3) 准备音频 → (2/3) 转录 → (3/3) 清理</figcaption>
 </figure>
 
@@ -448,7 +448,7 @@ ln -s ~/skills/audio-transcribe ~/.pi/agent/skills/audio-transcribe</pre></div>
 <h3>4.3 打开结果</h3>
 
 <figure>
-  <img src="img/03_srt.png" alt="SRT 内容">
+  <img loading="lazy" decoding="async" src="img/03_srt.png" alt="SRT 内容">
   <figcaption>标准 SRT 格式：序号 + 时间轴 + 文本</figcaption>
 </figure>
 
@@ -472,7 +472,7 @@ ln -s ~/skills/audio-transcribe ~/.pi/agent/skills/audio-transcribe</pre></div>
 <h3>JSON 的结构</h3>
 
 <figure>
-  <img src="img/08_json.png" alt="JSON 输出结构">
+  <img loading="lazy" decoding="async" src="img/08_json.png" alt="JSON 输出结构">
   <figcaption>has_timing 表示是否有时间戳；segments 里每条都有 start_ms/end_ms</figcaption>
 </figure>
 
@@ -507,7 +507,7 @@ ln -s ~/skills/audio-transcribe ~/.pi/agent/skills/audio-transcribe</pre></div>
 <h3>bcut 挂了怎么办</h3>
 
 <figure>
-  <img src="img/06_engine.png" alt="切换引擎">
+  <img loading="lazy" decoding="async" src="img/06_engine.png" alt="切换引擎">
   <figcaption>jianying 失败时，换回 bcut 或改用 txt 格式</figcaption>
 </figure>
 
@@ -559,7 +559,7 @@ python3 transcribe.py talk.mp4 --engine siliconflow -o 文稿.txt</pre></div>
 </div>
 
 <figure>
-  <img src="img/05_degrade.png" alt="降级提示">
+  <img loading="lazy" decoding="async" src="img/05_degrade.png" alt="降级提示">
   <figcaption>看到「已降级为本地规则清理」是正常兜底，不是报错</figcaption>
 </figure>
 
@@ -668,7 +668,7 @@ source ~/.bashrc</pre></div>
   <span class="v">--engine</span> bcut <span class="v">-o</span> 文稿.txt</pre></div>
 
 <figure>
-  <img src="img/04_link.png" alt="链接转录">
+  <img loading="lazy" decoding="async" src="img/04_link.png" alt="链接转录">
   <figcaption>自动下载音频，然后走同样的转录 + 清理流程</figcaption>
 </figure>
 

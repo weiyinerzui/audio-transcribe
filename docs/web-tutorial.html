@@ -196,7 +196,7 @@ td code{font-size:12.4px}
 <h3>它长这样</h3>
 
 <figure>
-  <img src="img/wt_01_first.png" alt="Web 版首屏">
+  <img loading="lazy" decoding="async" src="img/wt_01_first.png" alt="Web 版首屏">
   <figcaption>左边导航，右边工作区。深色是默认主题，点左下角可切浅色</figcaption>
 </figure>
 
@@ -427,7 +427,7 @@ pip install -r requirements-web.txt</pre></div>
 一次可以选<strong>多个</strong>，会排队逐个处理。单文件上限 2 GB。</p>
 
 <figure>
-  <img src="img/wt_02_file.png" alt="选择文件后">
+  <img loading="lazy" decoding="async" src="img/wt_02_file.png" alt="选择文件后">
   <figcaption>选好后会显示文件名和大小，下方按钮提示「将转录 1 个文件」</figcaption>
 </figure>
 
@@ -463,14 +463,14 @@ pip install -r requirements-web.txt</pre></div>
 <p>点蓝色的「开始转录」。下方会展开进度卡片，四阶段依次点亮：</p>
 
 <figure>
-  <img src="img/wt_08_progress.png" alt="转录进行中">
+  <img loading="lazy" decoding="async" src="img/wt_08_progress.png" alt="转录进行中">
   <figcaption>进度条 + 实时日志。第二阶段「转录」最耗时，取决于音频长度和引擎</figcaption>
 </figure>
 
 <p>完成后：</p>
 
 <figure>
-  <img src="img/wt_09_done.png" alt="转录完成">
+  <img loading="lazy" decoding="async" src="img/wt_09_done.png" alt="转录完成">
   <figcaption>四步全绿，出现「查看结果」按钮</figcaption>
 </figure>
 
@@ -518,7 +518,7 @@ pip install -r requirements-web.txt</pre></div>
 <p>左侧「服务商设置」。第一次进来是空的，给了四个预设：</p>
 
 <figure>
-  <img src="img/wt_04_settings_empty.png" alt="服务商设置为空">
+  <img loading="lazy" decoding="async" src="img/wt_04_settings_empty.png" alt="服务商设置为空">
   <figcaption>点任意一个预设卡片即可快速添加</figcaption>
 </figure>
 
@@ -535,7 +535,7 @@ pip install -r requirements-web.txt</pre></div>
 <p>点预设 → 在 API Key 框里粘上你的 key → 点「测试」。</p>
 
 <figure>
-  <img src="img/wt_05_settings_filled.png" alt="填好服务商">
+  <img loading="lazy" decoding="async" src="img/wt_05_settings_filled.png" alt="填好服务商">
   <figcaption>测试会真的发一次请求。看到绿色「连接正常」才算成功</figcaption>
 </figure>
 
@@ -558,12 +558,12 @@ pip install -r requirements-web.txt</pre></div>
 <p>从历史列表点「查看」，或转录完成后点「查看结果」，进入工作台。</p>
 
 <figure>
-  <img src="img/wt_10_history.png" alt="转录历史">
+  <img loading="lazy" decoding="async" src="img/wt_10_history.png" alt="转录历史">
   <figcaption>每次转录都在历史里：状态、引擎、格式、耗时。可取消、可删除</figcaption>
 </figure>
 
 <figure>
-  <img src="img/wt_11_workspace.png" alt="文稿工作台">
+  <img loading="lazy" decoding="async" src="img/wt_11_workspace.png" alt="文稿工作台">
   <figcaption>顶部播放器，下方逐句文稿。点时间戳跳转，直接改字</figcaption>
 </figure>
 
@@ -631,7 +631,7 @@ pip install -r requirements-web.txt</pre></div>
 <p>就这份文稿提问，回答里的 <code>[00:12:34]</code> 是<strong>可点的</strong>，点了播放器跳过去。</p>
 
 <figure>
-  <img src="img/wt_12_chat.png" alt="文稿问答">
+  <img loading="lazy" decoding="async" src="img/wt_12_chat.png" alt="文稿问答">
   <figcaption>回答带时间戳引用，点击直达对应音频位置</figcaption>
 </figure>
 
@@ -716,7 +716,7 @@ pip install -r requirements-web.txt</pre></div>
 <p>想让转录完全离线、不上传任何音频到云端，就用本地引擎。先下模型。</p>
 
 <figure>
-  <img src="img/wt_07_models.png" alt="本地模型管理">
+  <img loading="lazy" decoding="async" src="img/wt_07_models.png" alt="本地模型管理">
   <figcaption>平台不适用的模型直接标灰并写明原因，不会让你点了才发现跑不了</figcaption>
 </figure>
 
@@ -754,7 +754,7 @@ pip install -r requirements-web.txt</pre></div>
 <p>左侧「环境检测」。这一页会检查 11 到 13 项（取决于 bilibili-api 装没装），缺什么一目了然。</p>
 
 <figure>
-  <img src="img/wt_06_env.png" alt="环境检测">
+  <img loading="lazy" decoding="async" src="img/wt_06_env.png" alt="环境检测">
   <figcaption>顶部是环境概览，下面逐项检查。可修复的项右边有「修复」按钮</figcaption>
 </figure>
 
@@ -829,7 +829,7 @@ $ pip3 install (curl_cffi|httpx|aiohttp)</pre></div>
 <p>「新建转录」页切到「网页链接」，把地址粘进去即可。B站支持 <code>b23.tv</code> 短链和 <code>?p=3</code> 分P 参数。</p>
 
 <figure>
-  <img src="img/wt_03_url.png" alt="链接模式">
+  <img loading="lazy" decoding="async" src="img/wt_03_url.png" alt="链接模式">
   <figcaption>贴链接后同样可以选引擎、格式和清理方式</figcaption>
 </figure>
 
