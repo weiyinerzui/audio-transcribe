@@ -15,7 +15,7 @@
 #   4. 生成启动脚本 audio-transcribe，之后一条命令就能开
 #
 # 环境变量：
-#   AT_VERSION=v1.4.0   指定版本（默认 latest）
+#   AT_VERSION=v1.5.1   指定版本（默认 latest）
 #   AT_HOME=/somewhere  自定义安装目录（默认 ~/.audio-transcribe）
 
 set -euo pipefail

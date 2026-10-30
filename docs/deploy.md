@@ -316,7 +316,7 @@ less install.sh
 bash install.sh
 ```
 
-可用环境变量：`AT_HOME` 自定义安装目录、`AT_VERSION` 指定版本。
+可用环境变量：`AT_HOME` 自定义安装目录、`AT_VERSION` 指定版本（例如 `AT_VERSION=v1.5.1`，默认拉 main 最新）。
 
 ## 八、常见问题
 
