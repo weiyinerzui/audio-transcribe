@@ -72,6 +72,9 @@ jobs:
           sys.exit(1 if bad else 0)
           PY
 
+      - name: 冒烟测试（真启动一次）
+        run: python packaging/smoke_test.py
+
       - name: 上传到 Release
         uses: softprops/action-gh-release@v2
         with:

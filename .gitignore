@@ -49,3 +49,6 @@ packaging/.cache/
 
 # 绿色包在包根放 bin/ffmpeg，本地测试不要提交
 /bin/
+
+# 冒烟测试临时数据
+.smoke-*/
