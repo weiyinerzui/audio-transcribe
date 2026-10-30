@@ -75,10 +75,25 @@ def _load_config() -> Config:
     """从环境变量读出配置。密码不落日志。"""
     cfg = Config(secret=os.environ.get("AT_SECRET_KEY", "").strip())
 
+    def _opt_int(v):
+        """None / "" / 缺省 → None（不限）；其余转 int。"""
+        if v is None or v == "":
+            return None
+        return int(v)
+
     users_json = os.environ.get("AT_USERS_JSON", "").strip()
     if users_json:
+        # 支持两种写法：直接放 JSON，或者放一个文件路径。
+        # 多账户配置通常比较长，塞进环境变量容易引号转义出错，
+        # 也存在 shell 历史里。指向文件更稳妥（文件权限自己控 600）。
         try:
-            raw = json.loads(users_json)
+            if users_json.startswith("{"):
+                raw = json.loads(users_json)
+            else:
+                p = Path(users_json).expanduser()
+                if not p.is_file():
+                    raise SystemExit(f"AT_USERS_JSON 既不是 JSON 也不是文件：{users_json}")
+                raw = json.loads(p.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
             raise SystemExit(f"AT_USERS_JSON 不是合法 JSON：{exc}") from exc
         for name, spec in raw.items():
@@ -88,8 +103,12 @@ def _load_config() -> Config:
             u = User(
                 name=name,
                 role="admin" if spec.get("role") == "admin" else "guest",
-                daily_tasks=int(spec.get("daily_tasks", DEFAULT_GUEST_TASKS)),
-                daily_minutes=int(spec.get("daily_minutes", DEFAULT_GUEST_MINUTES)),
+                # 显式写 null 或不写 = 不限（None）；
+                # 写 0 = 一次都不给；写正数 = 按这个限额。
+                # 不能简单用 spec.get(k, 默认值)，那样「不写」会悄悄
+                # 拿到默认额度，文档里「不写就是不限」就成了空话。
+                daily_tasks=_opt_int(spec.get("daily_tasks")),
+                daily_minutes=_opt_int(spec.get("daily_minutes")),
             )
             cfg.users[name] = (pwd, u)
         cfg.enabled = bool(cfg.users)

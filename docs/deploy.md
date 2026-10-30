@@ -44,6 +44,22 @@ export AT_USERS_JSON='{
 python web/server.py --host 0.0.0.0
 ```
 
+配置长了塞进环境变量容易出错，也可以指向一个文件：
+
+```bash
+chmod 600 ~/users.json
+export AT_USERS_JSON=~/users.json
+```
+
+字段语义（容易搞混，留意）：
+
+| 写法 | 含义 |
+|---|---|
+| `"role": "admin"` | 无限额，不看下面两个字段 |
+| `"daily_tasks": 10` | 每天 10 次 |
+| `"daily_tasks": 0` | **一次都不给**（临时停用某人） |
+| 不写 `daily_tasks` | **不限**（走这个账户时不卡次数） |
+
 **`admin` 账户没有限额**，能看到所有人的任务；`guest` 只能看到自己的任务，超过额度返回 429。
 
 密码可以直接写明文，也可以写 `sha256:哈希值`：
@@ -60,10 +76,10 @@ python -c "import hashlib,sys;print('sha256:'+hashlib.sha256(sys.argv[1].encode(
 | 变量 | 默认 | 说明 |
 |---|---|---|
 | `AT_ACCESS_PASSWORD` | 空 | 设了就开单密码模式 |
-| `AT_USERS_JSON` | 空 | 设了就开多账户模式，优先级高于上面那个 |
+| `AT_USERS_JSON` | 空 | 设了就开多账户模式，优先级高于上面那个。填 JSON 或一个文件路径 |
 | `AT_SECRET_KEY` | 随机 | 签名 Cookie 用。**固定它，重启后登录状态才不会掉** |
-| `AT_DAILY_LIMIT` | 10 | 每个 guest 每天转录次数，`0` 表示不限 |
-| `AT_DAILY_MINUTES` | 60 | 每个 guest 每天音频分钟数，`0` 表示不限 |
+| `AT_DAILY_LIMIT` | 10 | 每个 guest 每天转录次数。`0` = 一次都不给（可用来临时停用某人）；**不设置** = 用默认值 |
+| `AT_DAILY_MINUTES` | 60 | 每个 guest 每天音频分钟数，规则同上 |
 | `AT_MAX_UPLOAD_MB` | 2048 | 单文件大小上限。演示站建议设 `100` |
 | `AT_CONCURRENCY` | 1 | 同时处理几个任务。演示站别超过 2 |
 | `AT_HOST` | 127.0.0.1 | 监听地址。容器/云平台设 `0.0.0.0` |
@@ -318,7 +334,18 @@ bash install.sh
 
 **Q：想临时关掉限额？**
 
-`AT_DAILY_LIMIT=0 AT_DAILY_MINUTES=0`。
+做法是给这个账户改成 admin，而不是把限额设成 0 ——
+**`AT_DAILY_LIMIT=0` 的意思是「一次都不给」**，不是「不限」。
+
+```bash
+# 方法一：AT_USERS_JSON 里 role 设 admin
+export AT_USERS_JSON='{"boss":{"password":"...","role":"admin"}}'
+
+# 方法二：固定密码模式下，admin 账户不受限
+```
+
+想给某人临时停用，把限额设成 `0` 即可。要表示「不限」，
+用 `AT_USERS_JSON` 并且不写 `daily_tasks` / `daily_minutes` 这两个字段。
 
 **Q：怎么清空某天的用量？**
 
