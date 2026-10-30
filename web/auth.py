@@ -50,8 +50,9 @@ DEFAULT_GUEST_MINUTES = 60
 class User:
     name: str
     role: str = "guest"          # admin / guest
-    daily_tasks: int = DEFAULT_GUEST_TASKS
-    daily_minutes: int = DEFAULT_GUEST_MINUTES
+    # None = 不限；0 = 一次都不给。两者行为不同，别用 0 表示不限。
+    daily_tasks: int | None = DEFAULT_GUEST_TASKS
+    daily_minutes: int | None = DEFAULT_GUEST_MINUTES
 
     @property
     def is_admin(self) -> bool:
@@ -260,10 +261,11 @@ class Usage:
         if user_obj.is_admin:
             return True, ""
         cur = self.get(user_obj.name)
-        if user_obj.daily_tasks and cur["tasks"] >= user_obj.daily_tasks:
-            return False, f"今日转录次数已用完（{user_obj.daily_tasks} 次/天），明天再来"
-        if user_obj.daily_minutes and cur["seconds"] >= user_obj.daily_minutes * 60:
-            return False, f"今日音频时长已用完（{user_obj.daily_minutes} 分钟/天），明天再来"
+        # None = 不限；0 = 一次都不给。别写成 `if user_obj.daily_tasks`
+        if user_obj.daily_tasks is not None and cur["tasks"] >= user_obj.daily_tasks:
+            return False, f"今日转录次数已用完（{user_obj.daily_tasks} 次/天），明天 0 点重置"
+        if user_obj.daily_minutes is not None and cur["seconds"] >= user_obj.daily_minutes * 60:
+            return False, f"今日音频时长已用完（{user_obj.daily_minutes} 分钟/天），明天 0 点重置"
         return True, ""
 
     def add_task(self, user: str):
@@ -288,16 +290,23 @@ class Usage:
             return {"role": "admin", "unlimited": True,
                     "used_tasks": cur["tasks"],
                     "used_minutes": round(cur["seconds"] / 60, 1)}
+        # 注意 0 和「不限」是两回事：
+        # AT_DAILY_LIMIT=0 表示一次都不给（管理员临时停用某人），
+        # 以前用 `if user_obj.daily_tasks` 判断，0 会被当成不限，
+        # 前端显示 left_tasks=null、额度校验也直接放行，等于没设限。
+        # 裸的 None 才代表不限（AT_USERS_JSON 里可以不写这个字段）。
+        lt = user_obj.daily_tasks
+        lm = user_obj.daily_minutes
         return {
             "role": "guest",
             "unlimited": False,
-            "limit_tasks": user_obj.daily_tasks,
-            "limit_minutes": user_obj.daily_minutes,
+            "limit_tasks": lt,
+            "limit_minutes": lm,
             "used_tasks": cur["tasks"],
             "used_minutes": round(cur["seconds"] / 60, 1),
-            "left_tasks": max(0, user_obj.daily_tasks - cur["tasks"]) if user_obj.daily_tasks else None,
-            "left_minutes": (max(0.0, user_obj.daily_minutes - cur["seconds"] / 60)
-                             if user_obj.daily_minutes else None),
+            "left_tasks": None if lt is None else max(0, lt - cur["tasks"]),
+            "left_minutes": (None if lm is None
+                             else round(max(0.0, lm - cur["seconds"] / 60), 1)),
         }
 
 

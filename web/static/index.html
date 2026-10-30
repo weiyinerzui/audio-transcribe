@@ -516,6 +516,32 @@ function toast(msg,type=''){
   const t=$('#toast'); t.textContent=msg; t.className='toast on '+type;
   clearTimeout(t._t); t._t=setTimeout(()=>t.className='toast '+type,2600);
 }
+
+/* 把接口错误翻成人话。
+   直接甩 "429" 或 "请先登录" 用户看不懂，得说清楚发生了什么、该怎么办。 */
+async function explainError(r, fallback='操作失败'){
+  let detail='';
+  try{ const d=await r.json(); detail=d.detail||d.message||''; }catch(_){}
+
+  if(r.status===401){
+    // 登录态过期：直接把登录框顶出来，别让用户对着报错发呆
+    showLogin('登录已过期，请重新登录');
+    return '登录已过期，请重新登录';
+  }
+  if(r.status===429){
+    // 后端已经说清了「用完什么、多少额度、明天重置」，直接用。
+    // 只有当后端没给 detail 时，才拿当前额度补一句，避免二次拼妆。
+    if(detail) return detail;
+    const q=AUTH&&AUTH.quota||{};
+    if(q.left_tasks!=null&&q.left_tasks<=0) return '今日转录次数已用完，明天 0 点重置';
+    if(q.left_minutes!=null&&q.left_minutes<=0) return '今日可用时长已用完，明天 0 点重置';
+    return '今日额度已用完，明天 0 点重置';
+  }
+  if(r.status===413) return '文件太大，超过了服务端允许的上传体积';
+  if(r.status===404) return detail||'内容不存在，可能已经被删掉了';
+  if(r.status>=500) return `服务器出错（${r.status}），稍后再试。详情见启动窗口的日志`;
+  return detail||fallback;
+}
 const TITLES={new:'新建转录',history:'转录历史',workspace:'文稿工作台',settings:'服务商设置',models:'本地模型',env:'环境检测'};
 function go(v){
   $$('.view').forEach(e=>e.hidden=true);
@@ -711,8 +737,21 @@ function renderFiles(){
   updStartHint();
 }
 function updStartHint(){
+  // 额度用尽时这一行归 paintQuotaGuard 管，别覆盖掉——
+  // 否则用户看到的还是「请先选择文件」，压根不知道是额度没了。
+  if(quotaBlocked()) return;
   if(SRC==='file') $('#start-hint').textContent=FILES.length?`将转录 ${FILES.length} 个文件`:'请先选择文件';
   else $('#start-hint').textContent=$('#url-input').value.trim()?'':'请填写链接';
+}
+
+/* 当前用户是否已经没额度了（决定「开始」按钮能不能点）。 */
+function quotaBlocked(){
+  if(!AUTH.enabled) return false;
+  const q=AUTH.quota||{};
+  if(q.unlimited) return false;
+  const noTasks=q.left_tasks!=null&&q.left_tasks<=0;
+  const noMinutes=q.left_minutes!=null&&q.left_minutes<=0;
+  return noTasks||noMinutes;
 }
 $('#url-input').oninput=updStartHint;
 
@@ -743,7 +782,7 @@ $('#start-btn').onclick=async()=>{
     try{
       const r=await fetch('/api/transcribe/url',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({url,...o})});
-      if(!r.ok) throw new Error((await r.json()).detail||'提交失败');
+      if(!r.ok) throw new Error(await explainError(r,'提交失败'));
       const d=await r.json(); watchTask(d.id);
     }catch(e){toast(e.message,'err')}
   } else {
@@ -757,7 +796,7 @@ $('#start-btn').onclick=async()=>{
       });
       try{
         const r=await fetch('/api/transcribe/file',{method:'POST',body:fd});
-        if(!r.ok) throw new Error((await r.json()).detail||'上传失败');
+        if(!r.ok) throw new Error(await explainError(r,'上传失败'));
         const d=await r.json(); watchTask(d.id);
       }catch(e){toast(f.name+': '+e.message,'err')}
     }
@@ -811,6 +850,9 @@ function onTaskEvent(ev){
     $('#open-btn').hidden=false; $('#cancel-btn').disabled=true;
     if(ev.degraded) toast('清理已降级为本地规则','');
     else toast('转录完成','ok');
+    // 时长是在任务完成时才按音频实际长度扣的，这里必须刷新一次额度，
+    // 否则侧栏还显示转录前的数字，用户会以为没扣。
+    if(AUTH.enabled) refreshAuth();
   }
   if(ev.stage==='error'){
     $('#task-badge').textContent='失败'; $('#task-badge').className='tag y';
@@ -1092,6 +1134,42 @@ function paintAuth(){
   if(q.left_tasks!=null) parts.push(q.left_tasks+' 次');
   if(q.left_minutes!=null) parts.push(Math.round(q.left_minutes)+' 分钟');
   $('#f-quota-left').textContent=parts.join(' · ')||'—';
+
+  // 额度用完了就别让他点，点了也是 429。按钮旁直接说清楚。
+  paintQuotaGuard(q);
+}
+
+/* 额度耗尽的提示 + 禁用开始按钮。登录态未启用或 admin 时清空。 */
+function paintQuotaGuard(q){
+  const hint=$('#start-hint'), btn=$('#start-btn');
+  if(!hint||!btn) return;
+  if(!AUTH.enabled||!q||q.unlimited){ hint.textContent=''; btn.disabled=false; btn.title=''; return; }
+
+  const noTasks=q.left_tasks!=null&&q.left_tasks<=0;
+  const noMinutes=q.left_minutes!=null&&q.left_minutes<=0;
+  if(noTasks||noMinutes){
+    const why=noTasks?'今日转录次数已用完':'今日可用时长已用完';
+    hint.textContent=why+'，明天 0 点重置。';
+    hint.style.color='var(--e,#e5484d)';
+    btn.disabled=true;
+    btn.title=why;
+  }else{
+    hint.textContent='';
+    hint.style.color='';
+    btn.disabled=false;
+    btn.title='';
+  }
+}
+
+/* 重新拉一次登录态与额度。任务完成后额度会变，得刷新。 */
+async function refreshAuth(){
+  try{
+    const r=await fetch('/api/auth/me');
+    const d=await r.json();
+    if(d.enabled&&!d.user){ showLogin('登录已过期，请重新登录'); return; }
+    AUTH={enabled:d.enabled,user:d.user,role:d.role,quota:d.quota};
+    paintAuth();
+  }catch(e){ /* 网络抖动就算了，下次再刷 */ }
 }
 
 function showLogin(msg){
@@ -1128,7 +1206,7 @@ async function bootAfterAuth(){
   renderLLM();
   updStartHint();
   const ps=getProviders();
-  if(!ps.length){
+  if(!ps.length&&!quotaBlocked()){
     $('#start-hint').textContent='提示：先选文件，再点开始';
   }
 }
