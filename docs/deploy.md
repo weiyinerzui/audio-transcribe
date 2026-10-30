@@ -274,8 +274,8 @@ python packaging/smoke_test.py
 正式产物由 GitHub Actions 在 `windows-latest` 上构建，打 tag 自动附到 Release：
 
 ```bash
-git tag v1.5.1
-git push origin v1.5.1
+git tag v1.6.0
+git push origin v1.6.0
 ```
 
 ### 已知限制
@@ -316,7 +316,7 @@ less install.sh
 bash install.sh
 ```
 
-可用环境变量：`AT_HOME` 自定义安装目录、`AT_VERSION` 指定版本（例如 `AT_VERSION=v1.5.1`，默认拉 main 最新）。
+可用环境变量：`AT_HOME` 自定义安装目录、`AT_VERSION` 指定版本（例如 `AT_VERSION=v1.6.0`，默认拉 main 最新）。
 
 ## 八、常见问题
 
