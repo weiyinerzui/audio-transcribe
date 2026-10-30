@@ -47,12 +47,15 @@ def _prepend_bundled_bin() -> None:
     """
     exe_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
     here = Path(__file__).resolve()
+
+    # 只认「包根/bin/」这一种布局：包根必须同时有 app/ 和 bin/。
+    # 不能盲目的逐级往上找 bin/ffmpeg，否则在仓库里跑时
+    # 会一路找到系统的 /bin/ffmpeg 并当成包内的，日志里冒出
+    # 「优先使用包内 ffmpeg：/bin」这种假消息。
     bundled = ""
-    # 逐级往上找 bin/ffmpeg.exe，比硬算层级更耐改动
-    for up in (3, 2, 1, 0):
-        cand = here.parents[up] / "bin" if up else here.parent / "bin"
-        if (cand / exe_name).is_file():
-            bundled = str(cand)
+    for cand in here.parents:
+        if (cand / "app").is_dir() and (cand / "bin" / exe_name).is_file():
+            bundled = str(cand / "bin")
             break
     if not bundled:
         return
@@ -68,6 +71,16 @@ _prepend_bundled_bin()
 app = FastAPI(title="audio-transcribe", docs_url=None, redoc_url=None)
 
 QUEUE = Queue(concurrency=int(os.environ.get("AT_CONCURRENCY", "1")))
+
+# 启动时把关键配置打出来，用户能从日志确认环境变量真的读进去了。
+# 之前并发数只能在代码里看，用户设了 AT_CONCURRENCY=4 也没法验证。
+print(
+    f"[audio-transcribe] 并发 {QUEUE.concurrency}"
+    f"（AT_CONCURRENCY={os.environ.get('AT_CONCURRENCY', '未设置')}）"
+    f" | 上传上限 {int(os.environ.get('AT_MAX_UPLOAD_MB', '2048'))} MB",
+    flush=True,
+)
+
 STATIC = HERE / "static"
 
 # ---------------------------------------------------------------- 访问控制
