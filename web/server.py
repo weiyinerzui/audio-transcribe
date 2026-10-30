@@ -38,9 +38,23 @@ from taskqueue import HOME, OUTPUT_DIR, UPLOAD_DIR, Queue, Task
 # 只有用户目录还没装过 ffmpeg 时才注入 PATH ——
 # 用户在界面里点「安装 ffmpeg」装到数据目录的版本依然生效。
 def _prepend_bundled_bin() -> None:
-    bundled = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin")
+    """把绿色包自带的 bin/ 加进 PATH。
+
+    包结构是  <包根>/app/web/server.py  和  <包根>/bin/ffmpeg.exe，
+    所以 bin 在 server.py 往上三层，不是两层。
+    （之前写成两层指向 app/bin，Windows 上直接找不到，
+      只有在 Linux 上被系统的 /usr/bin/ffmpeg 兜住才没暴露。）
+    """
     exe_name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
-    if not os.path.isfile(os.path.join(bundled, exe_name)):
+    here = Path(__file__).resolve()
+    bundled = ""
+    # 逐级往上找 bin/ffmpeg.exe，比硬算层级更耐改动
+    for up in (3, 2, 1, 0):
+        cand = here.parents[up] / "bin" if up else here.parent / "bin"
+        if (cand / exe_name).is_file():
+            bundled = str(cand)
+            break
+    if not bundled:
         return
     home = Path(os.environ.get("AUDIO_TRANSCRIBE_HOME") or str(HOME / ".audio-transcribe"))
     if os.path.isfile(home / "bin" / exe_name):
