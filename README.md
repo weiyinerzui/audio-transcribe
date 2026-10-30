@@ -376,11 +376,18 @@ python3 transcribe.py 视频.mp4 --engine bcut -o 字幕.srt 2>/dev/null   # 只
 
 ## 不想装环境？下载就能用
 
-**Windows 用户**：到 [Releases](https://github.com/weiyinerzui/audio-transcribe/releases/latest)
-下 `audio-transcribe-win64.zip`，解压双击「启动.bat」。
+**Windows 用户**：到 [Releases](https://github.com/weiyinerzui/audio-transcribe/releases/latest) 下载，两个版本二选一：
 
-不用装 Python，不用装 ffmpeg，不用敲任何命令。包里已经带好了运行时和 ffmpeg，
-数据存在解压目录下的 `data/`，整个文件夹拷到别的电脑照样能用。
+| 版本 | 大小 | 说明 |
+|---|---|---|
+| `audio-transcribe-win64.zip` | 约 124 MB | **推荐**。运行时和 ffmpeg 都带好了，解压双击「启动.bat」，全程不用联网 |
+| `audio-transcribe-win64-slim.zip` | 约 59 MB | 网速慢选这个。首次用时在界面「环境检查」里点一下装 ffmpeg（约 80 MB，只需一次） |
+
+两个版本都**不用装 Python**，不用敲任何命令。数据存在解压目录下的 `data/`，
+整个文件夹拷到 U 盘或别的电脑照样能用。
+
+> 完整版为什么这么大？ffmpeg 的编解码器库 `avcodec` 一个文件就 88 MB，
+> 里面是全格式支持，没法只留本项目用到的那几个。
 
 **macOS / Linux 用户**：一条命令搞定：
 
@@ -487,7 +494,7 @@ audio-transcribe/
 │   └── media/tutorial.mp4# 视频教程
 ├── packaging/
 │   ├── build_windows.py  # 打 Windows 绿色包
-│   ├── install.sh        # macOS / Linux 一键安装
+│   ├── install.sh        # macOS / Linux 一键安装（docs/ 下有一份同内容副本供直接 curl）
 │   └── launcher/         # 绿色包里的启动脚本
 └── engines/
     ├── base.py           # 引擎接口约定

@@ -1,0 +1,58 @@
+name: Check
+
+# 轻量一致性检查。不跑测试，只防「改了一份忘了另一份」这类问题。
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  consistency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install.sh 两份必须一致
+        run: |
+          # packaging/install.sh 是源文件，docs/install.sh 是给
+          # https://weiyinerzui.github.io/audio-transcribe/install.sh 这个
+          # 公开地址用的副本。两份不一致，用户 curl 到的就是旧版本。
+          if ! diff -u packaging/install.sh docs/install.sh; then
+            echo ""
+            echo "::error::packaging/install.sh 和 docs/install.sh 不一致"
+            echo "改完之后记得同步一份："
+            echo "  cp packaging/install.sh docs/install.sh"
+            exit 1
+          fi
+          echo "两份 install.sh 一致"
+
+      - name: install.sh 语法
+        run: bash -n packaging/install.sh && echo "语法 OK"
+
+      - name: Python 文件语法
+        run: |
+          python -m compileall -q \
+            audio.py cleaner.py downloader.py subtitle.py transcribe.py \
+            pipeline.py taskqueue.py env_check.py model_manager.py \
+            web/ engines/ packaging/build_windows.py packaging/smoke_test.py
+          echo "Python 语法 OK"
+
+      - name: YAML 语法
+        run: |
+          python -c "
+          import sys, pathlib
+          try:
+              import yaml
+          except ImportError:
+              print('跳过（无 pyyaml）'); sys.exit(0)
+          bad = False
+          for p in pathlib.Path('.github/workflows').glob('*.yml'):
+              try:
+                  yaml.safe_load(p.read_text(encoding='utf-8'))
+                  print(f'OK   {p}')
+              except Exception as e:
+                  print(f'FAIL {p}: {e}'); bad = True
+          sys.exit(1 if bad else 0)
+          "

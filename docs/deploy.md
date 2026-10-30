@@ -188,13 +188,37 @@ server {
 
 给完全不想碰命令行的用户：
 
-1. 到 [Releases](https://github.com/weiyinerzui/audio-transcribe/releases/latest) 下 `audio-transcribe-win64.zip`
+1. 到 [Releases](https://github.com/weiyinerzui/audio-transcribe/releases/latest) 选版本
 2. **完整解压**到一个纯英文路径，例如 `D:\audio-transcribe`
 3. 双击 `启动.bat`
 4. 浏览器自动打开 `http://127.0.0.1:8787`
 
-包里带了：便携 Python 3.12、`ffmpeg.exe` / `ffprobe.exe`、全部依赖。
-**用户侧不跑 pip、不联网下载模型**，解压即用。
+| 版本 | 大小 | 含 ffmpeg | 适用 |
+|---|---|---|---|
+| `audio-transcribe-win64.zip` | 约 124 MB | 是 | 推荐。解压即用，全程不联网 |
+| `audio-transcribe-win64-slim.zip` | 约 59 MB | 否 | 带宽紧张。首次用时在界面「环境检查」点一下装 ffmpeg |
+
+两个版本都带便携 Python 3.12 和全部 pip 依赖，**用户侧不跑 pip**。
+差别只在 ffmpeg：精简版少了约 65 MB 的编解码器库，需要用户点一次安装。
+
+> 为什么完整版这么大：ffmpeg 的 `avcodec` 一个 DLL 就 88 MB，
+> BtbN 的构建把全部编解码器都编进去了，没法只保留本项目用到的几个格式。
+> 自己从源码 `--disable-everything` 编译可以压到 10 MB 以内，但需要
+> MinGW 构建链，CI 里跑一遍要二三十分钟，不值得。
+
+### 精简版怎么装 ffmpeg
+
+界面左侧「环境检查」→ 找到 `ffmpeg` 那一项 → 点「一键安装」，
+它会把静态二进制下到 `%LOCALAPPDATA%\audio-transcribe\bin\`，约 80 MB，只需一次。
+
+网络访问不了 GitHub 时手动装：下
+[BtbN FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds/releases) 的
+`ffmpeg-master-latest-win64-lgpl-shared.zip`，解压后把 `bin\` 里的
+`ffmpeg.exe`、`ffprobe.exe` **和所有 `.dll`** 一起拷到包的 `bin\` 目录。
+只拷 exe 不拷 dll 会起不来，这点很关键。
+
+服务启动时会把包内 `bin\` 注入 `PATH`，但**如果你在数据目录里装过 ffmpeg，
+那个版本优先**——用户自己装的不会被包内版本盖掉。
 
 数据落在包内 `data\` 目录，整个文件夹拷到别的电脑（U 盘也行）继续用。
 
@@ -215,16 +239,27 @@ server {
 
 ```bash
 # 必须在 Windows 上跑 pip 那一步：装的是 Windows 版 wheel
-python packaging/build_windows.py
+python packaging/build_windows.py           # 完整版，约 124 MB
+python packaging/build_windows.py --slim    # 精简版，约 59 MB
 # 产物：packaging/dist/audio-transcribe-win64.zip
+#       packaging/dist/audio-transcribe-win64-slim.zip
+
+# 打完包验证真能跑（会启动服务、请求接口、逐项 import）
+python packaging/smoke_test.py
 ```
 
-构建脚本只用标准库，构建者不用装任何东西。正式产物由 GitHub Actions
-在 `windows-latest` 上构建，打 tag 自动附到 Release：
+构建脚本只用标准库，构建者不用装任何东西。
+
+`smoke_test.py` 是最后一道关，检查的是「能不能用」而不只是「文件在不在」：
+包内 Python 起不起得来、七个依赖能不能 import、ffmpeg 能不能执行、
+服务能不能起、首页和接口通不通。CI 里两个版本各跑一次，
+任何一项失败都不发布——宁可没 Release，也不发一个解压后打不开的包。
+
+正式产物由 GitHub Actions 在 `windows-latest` 上构建，打 tag 自动附到 Release：
 
 ```bash
-git tag v1.4.0
-git push origin v1.4.0
+git tag v1.5.1
+git push origin v1.5.1
 ```
 
 ### 已知限制
