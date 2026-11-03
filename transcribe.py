@@ -58,6 +58,8 @@ def parse_args(argv=None):
     p.add_argument("--local-model", default=None,
                    help="本地模型目录（faster-whisper / mlx-whisper）")
     p.add_argument("--device", default=None, help="本地模型运行设备（cpu/cuda/mps，可选）")
+    p.add_argument("--keep-media", action="store_true",
+                   help="保留链接下载的原始媒体（移到输出文件同目录）；默认随运行结束清理")
     return p.parse_args(argv)
 
 
@@ -84,6 +86,7 @@ def main(argv=None) -> int:
         clean_model=args.clean_model,
         clean_base_url=args.clean_base_url,
         clean_api_key=args.clean_api_key,
+        keep_media=args.keep_media,
         engine_kwargs=engine_kwargs,
     )
 
