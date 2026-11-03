@@ -71,6 +71,8 @@ class PipelineConfig:
     clean_model: str | None = None
     clean_base_url: str | None = None
     clean_api_key: str | None = None
+    # True 时把链接下载的原始媒体移到输出文件同目录，而不是随中间产物一起删除
+    keep_media: bool = False
     # 引擎级额外参数（本地模型路径、openai-asr 的 base_url/key 等）
     engine_kwargs: dict = field(default_factory=dict)
     # cookies（仅内存传递，绝不落盘）
@@ -258,6 +260,16 @@ def run(cfg: PipelineConfig,
         if work_audio and is_temp:
             audio.cleanup_temp(work_audio)
         if dl_file:
+            if cfg.keep_media:
+                dest = os.path.join(
+                    os.path.dirname(os.path.abspath(output_path)),
+                    os.path.basename(dl_file),
+                )
+                try:
+                    shutil.move(dl_file, dest)
+                    bus.emit("save", f"原始媒体已保留：{dest}")
+                except OSError as e:
+                    bus.emit("warn", f"保留原始媒体失败：{e}")
             shutil.rmtree(os.path.dirname(dl_file), ignore_errors=True)
         _restore_cookies(cfg.cookies)
 
